@@ -2,7 +2,7 @@ import numpy as np
 from trainer import Trainer
 
 def last_epoch(run, model_name):
-    train_acc, train_loss, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+    train_acc, _, _, _, _, _ = Trainer.load_metrics(run, model_name)
     if train_acc is None: return -1
     if np.sum(train_acc) == 0: return 0
     if np.min(train_acc[1:]) > 0: return len(train_acc) -1

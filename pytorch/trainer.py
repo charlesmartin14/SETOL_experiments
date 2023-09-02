@@ -32,7 +32,7 @@ class Trainer(object):
     self.model = model
 
     # attributes that cannot be initialized until training has begun.
-    self.train_loss, self.train_acc, self.test_acc, self.test_loss = None, None, None, None
+    self.train_loss, self.train_acc, self.val_loss, self.val_acc, self.test_acc, self.test_loss = [None] * 6
     self.details, self.watcher = None, None
 
   @staticmethod
@@ -74,6 +74,8 @@ class Trainer(object):
     with open(metrics_file, "wb") as fp:
       np.save(fp, self.train_acc)
       np.save(fp, self.train_loss)
+      np.save(fp, self.val_acc)
+      np.save(fp, self.val_loss)
       np.save(fp, self.test_acc)
       np.save(fp, self.test_loss)
 
@@ -95,7 +97,8 @@ class Trainer(object):
     self.model.load_state_dict(torch.load(save_path / "model"))
     self.details = self._load_details      (save_path)
 
-    self.train_acc, self.train_loss, self.test_acc, self.test_loss = self.load_metrics(run, model_name)
+    metrics = self.load_metrics(run, model_name)
+    self.train_acc, self.train_loss, self.val_acc, self.val_loss, self.test_acc, self.test_loss = metrics
 
   @staticmethod
   def load_details(run, e, model_name):
@@ -113,14 +116,16 @@ class Trainer(object):
   def _load_metrics(save_file):
     if not save_file.exists():
       print(f"save file {save_file} not found")
-      return None, None, None, None
+      return None, None, None, None, None, None
 
     with open(str(save_file), "rb") as fp:
-      train_acc = np.load(fp)
+      train_acc  = np.load(fp)
       train_loss = np.load(fp)
-      test_acc = np.load(fp)
-      test_loss = np.load(fp)
-    return train_acc, train_loss, test_acc, test_loss
+      val_acc    = np.load(fp)
+      val_loss   = np.load(fp)
+      test_acc   = np.load(fp)
+      test_loss  = np.load(fp)
+    return train_acc, train_loss, val_acc, val_loss, test_acc, test_loss
 
   @staticmethod
   def freeze_layer(layer):
@@ -154,11 +159,15 @@ class Trainer(object):
         return a
       self.train_acc  = extend(self.train_acc)
       self.train_loss = extend(self.train_loss)
+      self.val_acc  = extend(self.val_acc)
+      self.val_loss = extend(self.val_loss)
       self.test_acc  = extend(self.test_acc)
       self.test_loss = extend(self.test_loss)
     else:
       self.train_acc  = np.zeros((epochs+1,))
       self.train_loss = np.zeros((epochs+1,))
+      self.val_acc   = np.zeros((epochs+1,))
+      self.val_loss  = np.zeros((epochs+1,))
       self.test_acc   = np.zeros((epochs+1,))
       self.test_loss  = np.zeros((epochs+1,))
 
@@ -206,7 +215,7 @@ class Trainer(object):
 
 
     def inner_loop(e):
-      N_tr = 0 # = number of batches seen
+      N_tr = 0 # = number of train examples seen
       for b, (features, labels) in enumerate(batch_loader.batches("train")):
         opt.zero_grad()
         # labels = labels.to(device)
@@ -229,20 +238,20 @@ class Trainer(object):
       self.train_acc[e] /= N_tr
 
 
-    def eval_loop(e):
+    def eval_loop(e, mode):
       with torch.no_grad():
-        N_te=0
-        for b, (features, labels) in enumerate(batch_loader.batches("test")):
+        N_te, loss, acc = 0, 0., 0.
+        for b, (features, labels) in enumerate(batch_loader.batches(mode)):
           N_te += len(labels)
           # labels = labels.to(device)
           # features = preprocessing(features.to(device))
           preds = self.model(features) #.to(device))
-          acc = sum(torch.argmax(p)==torch.argmax(l) for p, l in zip(preds, labels))
-          self.test_loss[e] += loss_fn(preds, labels).item()
-          self.test_acc[e] += acc
+          acc  += sum(torch.argmax(p)==torch.argmax(l) for p, l in zip(preds, labels))
+          loss += loss_fn(preds, labels).item()
 
-      self.test_loss[e] /= ( (b+1) if loss_aggregation == "mean" else N_te )
-      self.test_acc[e] /= N_te
+      loss /= ( (b+1) if loss_aggregation == "mean" else N_te )
+      acc /= N_te
+      return loss, acc
 
 
     self.model.to(device)
@@ -252,9 +261,12 @@ class Trainer(object):
       self.model.train()
       inner_loop(e)
 
-      # Compute test accuracy
+      # Compute val and test accuracy
       self.model.eval()
-      eval_loop(e)
+      if "val" in batch_loader.preloaded:
+        self. val_loss[e], self. val_acc[e] = eval_loop(e, "val")
+      self.test_loss[e], self.test_acc[e] = eval_loop(e, "test")
+
 
       # Compute the new WW metrics
       self.ww_analyze(run, e, model_name, VERBOSE=VERBOSE)
@@ -274,7 +286,7 @@ class Trainer(object):
       for cb in post_epoch_callbacks: cb(model, e)
 
       if early_stop is not None:
-        if early_stop(self.train_loss[e]): break
+        if early_stop(self.val_loss[e]): break
 
 
   def evaluate(self, loader, mode, device="cuda", loss_fn=None):
@@ -327,14 +339,26 @@ class PreLoader(object):
     if device is None: device = "cuda" if torch.cuda.is_available() else "cpu"
     self.device = device
     self.preloaded = self.preload_data(TRAIN, TEST, DS_name, device=self.device)
-    self.N = {
-      "train": len(self.preloaded["train"]["labels"]),
-      "test" : len(self.preloaded["test" ]["labels"])
-    }
 
+
+  def split_val(self, fraction):
+    assert 0 < fraction < 1, fraction
+
+    N = len(self.preloaded["train"]["labels"])
+    inds = np.random.permutation(N)[:int(fraction * N)]
+    self.preloaded["val"] = {}
+    self.preloaded["val"]["images"] = self.preloaded["train"]["images"][inds]
+    self.preloaded["val"]["labels"] = self.preloaded["train"]["labels"][inds]
+    
+    A = np.ones(N)
+    A[inds] = -1
+    inds = np.where(A>=0)[0]
+    self.preloaded["train"]["images"] = self.preloaded["train"]["images"][inds]
+    self.preloaded["train"]["labels"] = self.preloaded["train"]["labels"][inds]
+    
 
   def batches(self, mode, shuffle=True, batch_size=None, device="cuda"):
-    assert mode in ("train", "test"), mode
+    assert mode in ("train", "test", "val"), mode
     if batch_size is None: batch_size = self.batch_size
 
     N = len(self.preloaded[mode]["images"])
