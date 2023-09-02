@@ -20,7 +20,7 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
   SKIP = 2
   for ax, layer in zip(axes, trained_layers):
     for run in runs:
-      train_acc, train_loss, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+      train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
       last_epoch = np.argmin(train_acc[1:] > 0) or len(train_acc)-1
       X = np.arange(SKIP, last_epoch(run, model_name))
 
@@ -39,6 +39,43 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
          ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
 
 
+def plot_runs(model_name, runs, run_name, WW_metrics, trained_layer = 0):
+  layers = 2
+
+  blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(runs)))
+  green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(runs)))
+
+  blue_map = {batch_size: blue_colors[i] for i, batch_size in enumerate(sorted(runs))}
+  green_map = {batch_size: green_colors[i] for i, batch_size in enumerate(sorted(runs))}
+
+  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics), figsize=(8*len(WW_metrics), 4))
+  all_metrics = [ Trainer.load_metrics(run, model_name) for run in runs]
+
+  def get_last():
+    for i, run in enumerate(runs):
+      train_acc, train_loss, _, _, test_acc, test_loss = all_metrics[i]
+      E = last_epoch(run, model_name)
+      # last_epoch = np.argmax(test_acc)
+      all_metrics[i] = (1 - train_acc[E], train_loss[E], 1 - test_acc[E], test_loss[E])
+
+      yield Trainer.load_details(run, last_epoch, model_name)
+
+  all_details = list(get_last())
+  train_err, train_loss, test_err, test_loss = tuple(zip(*all_metrics))
+
+  for ax, WW_metric in zip(axes, WW_metrics):
+    for run, details in zip(runs, all_details):
+      ax.plot(details.loc[trained_layer, WW_metric], train_err[run], '.', color=blue_colors[run], label=f"train error {run_name(run)}")
+    for run, details in zip(runs, all_details):
+      ax.plot(details.loc[trained_layer, WW_metric], test_err[run], '^', color=green_colors[run], label=f"test error {run_name(run)}")
+
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
+
+    ax.set(title=f"{model_name}\n{WW_metric}\n for layer {trained_layer}", xlabel= WW_metric, ylim=(-0.004, None))
+    ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+
+
 def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
 
@@ -55,12 +92,16 @@ def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
 
 
 def plot_shuffled_accuracy(DS, OPT, layer, LR, runs, run_name, SHUFFLE):
-  fig, axes = plt.subplots(ncols = 4, nrows = 1, figsize=(16, 4))
+  fig, axes = plt.subplots(ncols = 4, nrows = 1, figsize=(18, 4))
 
   SHUFFLE = 'shuffled' if SHUFFLE else 'smoothed'
 
   for run in runs:
-    train_acc, train_loss, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+    model_name = f"SETOL/{DS}/{OPT}/{layer}"
+    train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+    if train_acc is None:
+      print(f"metrics for {model_name} not found")
+      continue
 
     save_file = f"./saved_models/{model_name}/{run_name(run)}_{SHUFFLE}_accuracy.npy"
     with open(save_file, "rb") as fp:
@@ -69,15 +110,16 @@ def plot_shuffled_accuracy(DS, OPT, layer, LR, runs, run_name, SHUFFLE):
       shuffled_test_acc   = np.load(fp)
       shuffled_test_loss  = np.load(fp)
 
-    axes[0].plot(train_acc  - shuffled_train_acc , '+', label = run_name(run))
-    axes[1].plot(train_loss - shuffled_train_loss,     '+', label = run_name(run))
-    axes[2].plot(test_acc   - shuffled_test_acc  , '+', label = run_name(run))
-    axes[3].plot(test_loss  - shuffled_test_loss,      '+', label = run_name(run))
+    E = last_epoch(run, model_name)
+    axes[0].plot(train_acc[1:E]  - shuffled_train_acc[1:] , '-', label = run_name(run))
+    axes[1].plot(train_loss[1:E] - shuffled_train_loss[1:], '-', label = run_name(run))
+    axes[2].plot(test_acc[1:E]   - shuffled_test_acc[1:]  , '-', label = run_name(run))
+    axes[3].plot(test_loss[1:E]  - shuffled_test_loss[1:],  '-', label = run_name(run))
 
-  axes[0].set(xlabel="epochs", ylabel=f"{SHUFFLE} train error", title=f"{model_name}\nDelta between train error and {SHUFFLE} train error")
-  axes[1].set(xlabel="epochs", ylabel=f"{SHUFFLE} train loss",  title=f"{model_name}\nDelta between train loss and {SHUFFLE} train loss")
-  axes[2].set(xlabel="epochs", ylabel=f"{SHUFFLE} test error",  title=f"{model_name}\nDelta between test error and {SHUFFLE} test error")
-  axes[3].set(xlabel="epochs", ylabel=f"{SHUFFLE} test loss",   title=f"{model_name}\nDelta between test loss and {SHUFFLE} test loss")
+  axes[0].set(xlabel="epochs", ylabel=f"{SHUFFLE} train error", title=f"{model_name}\ntrain error - {SHUFFLE} train error")
+  axes[1].set(xlabel="epochs", ylabel=f"{SHUFFLE} train loss",  title=f"{model_name}\ntrain loss - {SHUFFLE} train loss")
+  axes[2].set(xlabel="epochs", ylabel=f"{SHUFFLE} test error",  title=f"{model_name}\ntest error - {SHUFFLE} test error")
+  axes[3].set(xlabel="epochs", ylabel=f"{SHUFFLE} test loss",   title=f"{model_name}\ntest loss - {SHUFFLE} test loss")
 
   for ax in axes: ax.legend()
 
