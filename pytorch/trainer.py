@@ -144,7 +144,7 @@ class Trainer(object):
     opt = "SGD", loss = "MSE",
     early_stop = None,
     VERBOSE=False,
-    loss_aggregation="sum",
+    loss_aggregation="mean",
   ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -286,7 +286,7 @@ class Trainer(object):
       for cb in post_epoch_callbacks: cb(model, e)
 
       if early_stop is not None:
-        if early_stop(self.val_loss[e]): break
+        if early_stop(self.train_loss[e]): break
 
 
   def evaluate(self, loader, mode, device="cuda", loss_fn=None):
