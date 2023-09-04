@@ -21,7 +21,6 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
   for ax, layer in zip(axes, trained_layers):
     for run in runs:
       train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
-      last_epoch = np.argmin(train_acc[1:] > 0) or len(train_acc)-1
       X = np.arange(SKIP, last_epoch(run, model_name))
 
       metric_vals = np.zeros(X.shape)
@@ -39,40 +38,36 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
          ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
 
 
-def plot_runs(model_name, runs, run_name, WW_metrics, trained_layer = 0):
-  layers = 2
+from utils import metric_error_bars, DF_error_bars
 
-  blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(runs)))
-  green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(runs)))
+def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, search_param="BS"):
+  blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
+  green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
-  blue_map = {batch_size: blue_colors[i] for i, batch_size in enumerate(sorted(runs))}
-  green_map = {batch_size: green_colors[i] for i, batch_size in enumerate(sorted(runs))}
+  # blue_map = {batch_size: blue_colors[i] for i, batch_size in enumerate(sorted(scales))}
+  # green_map = {batch_size: green_colors[i] for i, batch_size in enumerate(sorted(scales))}
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics), figsize=(8*len(WW_metrics), 4))
-  all_metrics = [ Trainer.load_metrics(run, model_name) for run in runs]
 
-  def get_last():
-    for i, run in enumerate(runs):
-      train_acc, train_loss, _, _, test_acc, test_loss = all_metrics[i]
-      E = last_epoch(run, model_name)
-      # last_epoch = np.argmax(test_acc)
-      all_metrics[i] = (1 - train_acc[E], train_loss[E], 1 - test_acc[E], test_loss[E])
+  means, stdevs = metric_error_bars(DS, OPT, layer, scales, runs, search_param=search_param)
+  train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
 
-      yield Trainer.load_details(run, last_epoch, model_name)
+  mean_DFs, stdev_DFs = DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param=search_param)
 
-  all_details = list(get_last())
-  train_err, train_loss, test_err, test_loss = tuple(zip(*all_metrics))
 
-  for ax, WW_metric in zip(axes, WW_metrics):
-    for run, details in zip(runs, all_details):
-      ax.plot(details.loc[trained_layer, WW_metric], train_err[run], '.', color=blue_colors[run], label=f"train error {run_name(run)}")
-    for run, details in zip(runs, all_details):
-      ax.plot(details.loc[trained_layer, WW_metric], test_err[run], '^', color=green_colors[run], label=f"test error {run_name(run)}")
+  for ax, WW_metric, mean_DF, stdev_DF in zip(axes, WW_metrics, mean_DFs, stdev_DFs):
+    for scale, mean_details in zip(scales, mean_DFs):
+      ax.plot(mean_details.loc[trained_layer, WW_metric], 1 - train_acc[scale], '.', color=blue_colors[scale],
+              label=f"train error {search_param} = {2**scale}")
+    for scale, mean_details in zip(scales, mean_DFs):
+      ax.plot(mean_details.loc[trained_layer, WW_metric], 1 - test_acc[scale], '^', color=green_colors[scale],
+              label=f"test error {search_param} = {2**scale}")
 
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
-    ax.set(title=f"{model_name}\n{WW_metric}\n for layer {trained_layer}", xlabel= WW_metric, ylim=(-0.004, None))
+    model_base = f"{DS} {OPT} {layer} {search_param} search"
+    ax.set(title=f"{model_base}\n{WW_metric}\n for layer {trained_layer}", xlabel= WW_metric)
     ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
 
 
