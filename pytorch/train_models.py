@@ -55,21 +55,30 @@ if __name__ == "__main__":
       
   # NOTE: If you use this, then the non-determinism guarantees do not hold.
   RESTART = "RESTART" in ARGS
+
+  LR_search = "LR" in ARGS
   
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
-  ALL_BS = [1,2,4,8,16,32]
   
   
   m = MLP2(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
-  for layer, opt, LR in hyper_params:
+  for layer, opt, base_LR in hyper_params:
     if WHITEN:
       if layer == "all": continue
       layer = f"{layer}_WHITENED"
   
-    for BS in ALL_BS:
-      model_name = f"SETOL/{DS}/{opt}/{layer}/BS_{BS}"
+    for scale in range(6):
+      if LR_search:
+        BS = 32
+        LR = [lr * 2**scale for lr in base_LR]
+        model_name = f"SETOL/{DS}/{opt}/{layer}/LR_{2**scale}"
+      else:
+        # BS search
+        BS = 2 ** scale
+        LR = base_LR
+        model_name = f"SETOL/{DS}/{opt}/{layer}/BS_{BS}"
       for run in range(5):
         print(model_name, run)
         
@@ -87,6 +96,7 @@ if __name__ == "__main__":
         t.train_loop(model_name, run, 1000, loader, starting_epoch = starting_epoch,
           LR=LR, opt=opt,
           loss="CCE", early_stop=EarlyStopper(3, 0.0001))
-        print(f"{model_name} Batch size {BS} converged at epoch {last_epoch(model_name, run)}")
-        print(Trainer.load_details())
+        E = last_epoch(run, model_name)
+        print(f"{model_name} Batch size {BS} converged at epoch {E}")
+        print(Trainer.load_details(run, E, model_name))
         print()
