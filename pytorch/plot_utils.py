@@ -44,9 +44,6 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
-  # blue_map = {batch_size: blue_colors[i] for i, batch_size in enumerate(sorted(scales))}
-  # green_map = {batch_size: green_colors[i] for i, batch_size in enumerate(sorted(scales))}
-
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics), figsize=(8*len(WW_metrics), 4))
 
   means, stdevs = metric_error_bars(DS, OPT, layer, scales, runs, search_param=search_param)
@@ -55,7 +52,6 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
 
   mean_DFs, stdev_DFs = DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param=search_param)
 
-
   for ax, WW_metric in zip(axes, WW_metrics):
     for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
       X = mean_details.loc[trained_layer, WW_metric]
@@ -63,7 +59,7 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
       Y = 1 - train_acc[scale]
       yerr = train_acc_SD[scale]
       ax.errorbar(X, Y, xerr=xerr, yerr=yerr, fmt='.', color=blue_colors[scale], label=f"train error {search_param} = {2**scale}")
-    for scale, mean_details in zip(scales, mean_DFs):
+    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
       X = mean_details.loc[trained_layer, WW_metric]
       xerr = stdev_details.loc[trained_layer, WW_metric]
       Y = 1 - test_acc[scale]
