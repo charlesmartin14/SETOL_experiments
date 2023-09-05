@@ -51,17 +51,24 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
 
   means, stdevs = metric_error_bars(DS, OPT, layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
+  train_acc_SD, train_loss_SD, _, _, test_acc_SD, test_loss_SD = tuple(zip(*stdevs))
 
   mean_DFs, stdev_DFs = DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param=search_param)
 
 
-  for ax, WW_metric, mean_DF, stdev_DF in zip(axes, WW_metrics, mean_DFs, stdev_DFs):
+  for ax, WW_metric in zip(axes, WW_metrics):
+    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
+      X = mean_details.loc[trained_layer, WW_metric]
+      xerr = stdev_details.loc[trained_layer, WW_metric]
+      Y = 1 - train_acc[scale]
+      yerr = train_acc_SD[scale]
+      ax.errorbar(X, Y, xerr=xerr, yerr=yerr, fmt='.', color=blue_colors[scale], label=f"train error {search_param} = {2**scale}")
     for scale, mean_details in zip(scales, mean_DFs):
-      ax.plot(mean_details.loc[trained_layer, WW_metric], 1 - train_acc[scale], '.', color=blue_colors[scale],
-              label=f"train error {search_param} = {2**scale}")
-    for scale, mean_details in zip(scales, mean_DFs):
-      ax.plot(mean_details.loc[trained_layer, WW_metric], 1 - test_acc[scale], '^', color=green_colors[scale],
-              label=f"test error {search_param} = {2**scale}")
+      X = mean_details.loc[trained_layer, WW_metric]
+      xerr = stdev_details.loc[trained_layer, WW_metric]
+      Y = 1 - test_acc[scale]
+      yerr = test_acc_SD[scale]
+      ax.errorbar(X, Y, xerr=xerr, yerr=yerr, fmt='^', color=green_colors[scale], label=f"test error {search_param} = {2**scale}")
 
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
