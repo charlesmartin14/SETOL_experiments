@@ -60,7 +60,17 @@ if __name__ == "__main__":
   
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
-  
+
+  RUNS = 5  # number of times to run with a different seed.
+
+  # Ensure that a different initialization exists for each seed.
+  for run in range(RUNS):
+    if not Trainer.save_dir(run, 0, "SETOL/TEST").exists():
+      reset_random_seeds(seed_value=run+1)
+      m = MLP2(widths=(300, 100), H=H, W=W, C=C)
+      t = Trainer(m)
+      t.save(run, 0, "SETOL/TEST")
+
   
   m = MLP2(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
@@ -79,7 +89,8 @@ if __name__ == "__main__":
         BS = 2 ** scale
         LR = base_LR
         model_name = f"SETOL/{DS}/{opt}/{layer}/BS_{BS}"
-      for run in range(5):
+      for run in range(RUNS):
+        if Trainer.metrics_path(run, model_name).exists(): continue
         print(model_name, run)
         
         starting_epoch = 0
@@ -88,10 +99,11 @@ if __name__ == "__main__":
     
         loader = PreLoader(DS, TRAIN, TEST, batch_size=BS)
         loader.split_val(0.1)
-        t.load(0, 0, "SETOL/TEST")  # Start with the same initial weights
+
+        t.load(run, 0, "SETOL/TEST")  # Start with the same initial weights
         if WHITEN:
           whiten(m, LR)
-    
+
         reset_random_seeds(seed_value=run+1)
         t.train_loop(model_name, run, 1000, loader, starting_epoch = starting_epoch,
           LR=LR, opt=opt,
