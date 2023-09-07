@@ -120,6 +120,7 @@ class Trainer(object):
 
   @staticmethod
   def _load_metrics(save_file, VERBOSE=False):
+    if not isinstance(save_file, Path): save_file = Path(save_file)
     if not save_file.exists():
       if VERBOSE:
         print(f"save file {save_file} not found")
