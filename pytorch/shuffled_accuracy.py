@@ -36,76 +36,87 @@ def SVD_shuffle(c, xmin, SHUFFLE=True):
   c.weight = torch.nn.Parameter(U @ torch.diag(S) @ V)
 
 
-def shuffled_accuracy(t, loader, run, model_name, LR, device="cuda", SHUFFLE=True):
-  print(f"{'shuffled' if SHUFFLE else 'truncated'} accuracy {model_name} run {run}")
-  E = last_epoch(run, model_name)
-  shuffled_train_acc  = np.zeros(E)
-  shuffled_test_acc   = np.zeros(E)
-  shuffled_train_loss = np.zeros(E)
-  shuffled_test_loss  = np.zeros(E)
-
-  for e in range(1, E+1):
-    details = t.load_details(run, e, model_name)
-    t.load(run, e, model_name)
-    t.model.to(device)
-    for c, lr, layer_id in zip(t.model.children(), LR, range(len(t.model.children()))):
-      if lr > 0:
-        xmin = details.loc[layer_id, "xmin"]
-        SVD_shuffle(c, xmin, SHUFFLE)
-    shuffled_train_acc[e-1], shuffled_train_loss[e-1] = t.evaluate(loader, "train")
-    shuffled_test_acc [e-1], shuffled_test_loss [e-1] = t.evaluate(loader, "test")
-    print('.', end="", flush=True)
-    if e % 100 == 0: print()
-  print()
-
-  return shuffled_train_acc, shuffled_train_loss, shuffled_test_acc, shuffled_test_loss
-
-
-def save_shuffled_accuracy(DS, OPT, layer, LR, runs, run_name, SHUFFLE):
-  model_name = f"SETOL/{DS}/{OPT}/{layer}"
+def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=True):
+  SHUFFLED = 'shuffled' if SHUFFLE else 'smoothed'
 
   for run in runs:
-    save_file = f"./saved_models/{model_name}/{run_name(run)}_{'shuffled' if SHUFFLE else 'smoothed'}_accuracy.npy"
-    if Path(save_file).exists(): continue
+    save_file = f"./saved_models/{model_name}/{SHUFFLED}_accuracy_run_{run}.npy"
+    if Path(save_file).exists(): return
 
-    shuffled_train_acc, shuffled_train_loss, shuffled_test_acc, shuffled_test_loss = shuffled_accuracy(t, loader, run, model_name, LR, SHUFFLE=SHUFFLE)
+    print(f"{'shuffled' if SHUFFLE else 'truncated'} accuracy {model_name} run {run}")
+    E = last_epoch(run, model_name)
+    shuffled_train_acc  = np.zeros(E+1)
+    shuffled_train_loss = np.zeros(E+1)
+    shuffled_val_acc    = np.zeros(E+1)
+    shuffled_val_loss   = np.zeros(E+1)
+    shuffled_test_acc   = np.zeros(E+1)
+    shuffled_test_loss  = np.zeros(E+1)
+
+    details = t.load_details(run, model_name)
+    for e in range(1, E+1):
+      t.load(run, e, model_name)
+      t.model.to(device)
+      for c, lr, layer_id in zip(t.model.children(), LR, range(len(t.model.children()))):
+        if lr > 0:
+          xmin = details.query(f"epoch == {e}").loc[layer_id, "xmin"]
+          SVD_shuffle(c, xmin, SHUFFLE)
+      shuffled_train_acc[e], shuffled_train_loss[e] = t.evaluate(loader, "train")
+      shuffled_val_acc  [e], shuffled_val_loss  [e] = t.evaluate(loader, "val")
+      shuffled_test_acc [e], shuffled_test_loss [e] = t.evaluate(loader, "test")
+      print('.', end="", flush=True)
+      if e % 100 == 0: print()
+    print()
+
     with open(save_file, "wb") as fp:
       np.save(fp, shuffled_train_acc)
       np.save(fp, shuffled_train_loss)
+      np.save(fp, shuffled_val_acc)
+      np.save(fp, shuffled_val_loss)
       np.save(fp, shuffled_test_acc)
       np.save(fp, shuffled_test_loss)
     print(f"saved to {save_file}")
 
 
-if __name__ == "__main__":
-  ARGS = sys.argv.copy()
-  DS, C, H, W = "MNIST", 1, 28, 28
-  if   "FASHION" in ARGS: DS, C, H, W = "FASHION", 1, 28, 28
-  elif "CIFAR10" in ARGS: DS, C, H, W = "CIFAR10", 3, 32, 32
-      
-  WHITEN = "WHITEN" in ARGS
-  if WHITEN: 
-    layer = f"{layer}_WHITENED"
-      
+def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
   loader = PreLoader(DS, TRAIN, TEST, batch_size=10000)
-  
+  loader.split_val(0.1)
+
   m = MLP2(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
 
   layer_data = [
-    ("layer0", [1, 0]),
-    ("layer0_WHITENED", [1, 0]),
-    ("layer1", [0, 1]),
-    ("layer1_WHITENED", [0, 1]),
     ("all", [1, 1]),
+    ("FC1", [1, 0]),
+    ("FC1_WHITENED", [1, 0]),
+    ("FC2", [0, 1]),
+    ("FC2_WHITENED", [0, 1]),
   ]
 
-  ALL_BS = [1,2,4,8,16,32]
-  run_name = lambda r: f"BS = {ALL_BS[r]}"
-  for DS in ["MNIST", "FASHION"]:
-    for OPT in ["SGD", "ADAM"]:
-      for layer, LR in layer_data:
-        save_shuffled_accuracy(DS, OPT, layer, LR, range(6), run_name, SHUFFLE=False)
-        save_shuffled_accuracy(DS, OPT, layer, LR, range(6), run_name, SHUFFLE=True)
+  for layer, LR in layer_data:
+    if WHITEN:
+      layer = f"{layer}_WHITENED"
+    for scale in range(SCALES):
+      model_name = f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}"
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False)
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True)
+
+
+if __name__ == "__main__":
+  ARGS = sys.argv.copy()
+  WHITEN = "WHITEN" in ARGS
+
+  OPT = "ADAM" if "ADAM" in ARGS else "SGD"
+
+  DS, C, H, W = "MNIST", 1, 28, 28
+  if   "FASHION" in ARGS: DS, C, H, W = "FASHION", 1, 28, 28
+  elif "CIFAR10" in ARGS: DS, C, H, W = "CIFAR10", 3, 32, 32
+
+  RUNS = 5
+  SCALES = 6
+
+  search_param = "BS"
+  if "LR" in ARGS: search_param = "LR"
+
+  main(DS, OPT, RUNS, SCALES, search_param, WHITEN, C, H, W)
