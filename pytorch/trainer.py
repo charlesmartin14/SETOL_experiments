@@ -59,12 +59,12 @@ class Trainer(object):
     details['model_name'] = model_name
 
     assert (epoch > 0 or self.train_acc[epoch] > 0), epoch
+    details['train_acc' ] = self.train_acc[epoch]
+    details['train_loss'] = self.train_loss[epoch]
     details['val_acc'   ] = self.val_acc[epoch]
     details['val_loss'  ] = self.val_loss[epoch]
     details['test_acc'  ] = self.test_acc[epoch]
     details['test_loss' ] = self.test_loss[epoch]
-    details['train_acc' ] = self.train_acc[epoch]
-    details['train_loss'] = self.train_loss[epoch]
 
     if self.details is None:  self.details = details
     else:                     self.details = self.details.append(details)
