@@ -166,10 +166,11 @@ class Trainer(object):
       self.test_acc  = extend(self.test_acc)
       self.test_loss = extend(self.test_loss)
     else:
+      self.details = None
       self.train_acc  = np.zeros((epochs+1,))
       self.train_loss = np.zeros((epochs+1,))
-      self.val_acc   = np.zeros((epochs+1,))
-      self.val_loss  = np.zeros((epochs+1,))
+      self.val_acc    = np.zeros((epochs+1,))
+      self.val_loss   = np.zeros((epochs+1,))
       self.test_acc   = np.zeros((epochs+1,))
       self.test_loss  = np.zeros((epochs+1,))
 
