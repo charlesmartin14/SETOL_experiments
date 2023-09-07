@@ -53,13 +53,13 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
          ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
 
 
-from utils import metric_error_bars, DF_error_bars
 
 def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, search_param="BS"):
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
-  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics), figsize=(8*len(WW_metrics), 4))
+  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)), 4))
+  set_styles()
 
   means, stdevs = metric_error_bars(DS, OPT, layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
@@ -67,30 +67,49 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
 
   mean_DFs, stdev_DFs = DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param=search_param)
 
-  for ax, WW_metric in zip(axes, WW_metrics):
-    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
-      X = mean_details.loc[trained_layer, WW_metric]
-      xerr = stdev_details.loc[trained_layer, WW_metric]
-      Y = 1 - train_acc[scale]
-      yerr = train_acc_SD[scale]
-      ax.errorbar(X, Y, xerr=xerr, yerr=yerr, fmt='.', color=blue_colors[scale], label=f"train error {search_param} = {2**scale}")
-    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
-      X = mean_details.loc[trained_layer, WW_metric]
-      xerr = stdev_details.loc[trained_layer, WW_metric]
-      Y = 1 - test_acc[scale]
-      yerr = test_acc_SD[scale]
-      ax.errorbar(X, Y, xerr=xerr, yerr=yerr, fmt='^', color=green_colors[scale], label=f"test error {search_param} = {2**scale}")
+  def populate_tr(ax, scale, X, xerr):
+    ax.errorbar(X, 1 - train_acc[scale], xerr=xerr, yerr=train_acc_SD[scale], fmt='.',
+                color=blue_colors[scale], label=f"train error {search_param} = {2**scale}")
 
+  def populate_te(ax, scale, X, xerr):
+    ax.errorbar(X, 1 - test_acc[scale], xerr=xerr, yerr=test_acc_SD[scale], fmt='^',
+                color=green_colors[scale], label=f"train error {search_param} = {2**scale}")
+
+
+  layer_names = ["FC1", "FC2"]
+  search_param_long = { "BS": "batch sizes", "LR": "learning rates"}[search_param]
+
+  # For the first one just plot BS / LR directly.
+  for scale in scales: populate_tr(axes[0], scale, X = 2**scale, xerr = 0)
+  for scale in scales: populate_te(axes[0], scale, X = 2**scale, xerr = 0)
+
+  box = axes[0].get_position()
+  axes[0].set_position([box.x0, box.y0, box.width * 0.6, box.height])
+  axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long)
+  axes[0].legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+
+  # Now fill the remaining plots with the desired WW_metrics.
+  for ax, WW_metric in zip(axes[1:], WW_metrics):
+    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
+      populate_tr( ax, scale,
+        X     = mean_details.loc[trained_layer, WW_metric],
+        xerr  = stdev_details.loc[trained_layer, WW_metric])
+    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
+      populate_te( ax, scale,
+        X = mean_details.loc[trained_layer, WW_metric],
+        xerr = stdev_details.loc[trained_layer, WW_metric])
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
+
     model_base = f"{DS} {OPT} {layer} {search_param} search"
-    ax.set(title=f"{model_base}\n{WW_metric}\n for layer {trained_layer}", xlabel= WW_metric)
+    ax.set(title=f"MLP3: {WW_metric} for {layer_names[trained_layer]} vs. train/test error\nVarious {search_param_long} considered", xlabel= WW_metric)
     ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
 
 
 def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
+  set_styles()
 
   for run in runs:
     E = last_epoch(run, model_name)
