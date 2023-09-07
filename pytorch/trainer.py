@@ -138,7 +138,7 @@ class Trainer(object):
     post_epoch_callbacks=(),
     opt = "SGD", loss = "MSE",
     early_stop = None,
-    VERBOSE=False,
+    VERBOSE=True,
     loss_aggregation="mean",
   ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -202,10 +202,9 @@ class Trainer(object):
     if preprocessing is None:
       preprocessing = torch.nn.Identity()
 
-
     # First save and analyze the model as initialized
     self.watcher = WeightWatcher(model=self.model, log_level="ERROR")
-    self.ww_analyze(run, 0, model_name, VERBOSE=VERBOSE)
+    self.ww_analyze(run, 0, model_name)
     self.save(run, 0, model_name)
 
 
@@ -264,19 +263,20 @@ class Trainer(object):
 
 
       # Compute the new WW metrics
-      self.ww_analyze(run, e, model_name, VERBOSE=VERBOSE)
-      self.save_details(run, e, model_name)
+      self.ww_analyze(run, e, model_name)
+      self.save_details(run, model_name)
 
       if e % save_every == 0:
         self.save(run, e, model_name)
-        tr_l = self.train_loss[e]
-        tr_a = self.train_acc[e]
-        te_a = self.test_acc[e]
+        if VERBOSE:
+          tr_l = self.train_loss[e]
+          tr_a = self.train_acc[e]
+          te_a = self.test_acc[e]
 
-        t = time() - prev_time
-        prev_time = time()
-        print(f"{model_name} run {run} epoch {e} loss {tr_l:0.04f} train accuracy {tr_a:0.04f} test accuracy {te_a:0.04f} {t:0.02f} seconds"
-        f"\t alpha 1 {self.details.alpha[0]:0.03f}\t alpha 2 {self.details.alpha[1]:0.03f}")
+          t = time() - prev_time
+          prev_time = time()
+          print(f"{model_name} run {run} epoch {e} loss {tr_l:0.04f} train accuracy {tr_a:0.04f} test accuracy {te_a:0.04f} {t:0.02f} seconds"
+          f"\t alpha 1 {self.details.alpha[0]:0.03f}\t alpha 2 {self.details.alpha[1]:0.03f}")
 
       for cb in post_epoch_callbacks: cb(self.model, e)
 
