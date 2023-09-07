@@ -44,7 +44,9 @@ def whiten(m, LR):
         c.bias[:] = 1.
 
 
-def main(DS, RUNS, LR_search, SCALES, WHITEN, C=1, H=28, W=28, RESTART=False):
+def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=False):
+  assert search_param in ("BS", "LR"), search_param
+
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
 
@@ -58,21 +60,21 @@ def main(DS, RUNS, LR_search, SCALES, WHITEN, C=1, H=28, W=28, RESTART=False):
   
   m = MLP2(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
-  for layer, opt, base_LR in hyper_params:
+  for layer, OPT, base_LR in hyper_params:
     if WHITEN:
       if layer == "all": continue
       layer = f"{layer}_WHITENED"
   
     for scale in range(SCALES):
-      if LR_search:
+      if search_param == "LR":
         BS = 32
         LR = [lr * 2**scale for lr in base_LR]
-        model_name = f"SETOL/{DS}/{opt}/{layer}/LR_{2**scale}"
+        model_name = f"SETOL/{DS}/{OPT}/{layer}/LR_{2**scale}"
       else:
         # BS search
         BS = 2 ** scale
         LR = base_LR
-        model_name = f"SETOL/{DS}/{opt}/{layer}/BS_{BS}"
+        model_name = f"SETOL/{DS}/{OPT}/{layer}/BS_{BS}"
 
       for run in range(RUNS):
         if Trainer.metrics_path(run, model_name).exists(): continue
@@ -91,11 +93,11 @@ def main(DS, RUNS, LR_search, SCALES, WHITEN, C=1, H=28, W=28, RESTART=False):
 
         reset_random_seeds(seed_value=run+1)
         t.train_loop(model_name, run, 1000, loader, starting_epoch = starting_epoch,
-          LR=LR, opt=opt,
+          LR=LR, opt=OPT,
           loss="CCE", early_stop=EarlyStopper(3, 0.0001))
         E = last_epoch(run, model_name)
         print(f"{model_name} Batch size {BS} converged at epoch {E}")
-        print(Trainer.load_details(run, E, model_name))
+        print(Trainer.load_details(run, model_name).query(f"epoch == {E}"))
         print()
 
 
@@ -105,8 +107,6 @@ if __name__ == "__main__":
 
   WHITEN = "WHITEN" in sys.argv
   
-  LR_search = "LR" in sys.argv
-
   RUNS = 5  # number of times to run with a different seed.
 
   SCALES = 6  # Number of different learning rates or batch sizes to examine
@@ -115,5 +115,7 @@ if __name__ == "__main__":
   if   "FASHION" in sys.argv: DS, C, H, W = "FASHION", 1, 28, 28
   elif "CIFAR10" in sys.argv: DS, C, H, W = "CIFAR10", 3, 32, 32
 
-      
-  main(DS, RUNS, LR_search, SCALES, WHITEN, C, H, W, RESTART)
+  search_param = "BS"
+  if "LR" in sys.argv: search_param = "LR"
+
+  main(DS, search_param, SCALES, RUNS, WHITEN, C, H, W, RESTART)
