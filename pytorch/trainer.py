@@ -274,11 +274,12 @@ class Trainer(object):
           tr_l = self.train_loss[e]
           tr_a = self.train_acc[e]
           te_a = self.test_acc[e]
+          alpha = self.details.query(f"epoch == {e}").loc[:, "alpha"]
 
           t = time() - prev_time
           prev_time = time()
           print(f"{model_name} run {run} epoch {e} loss {tr_l:0.04f} train accuracy {tr_a:0.04f} test accuracy {te_a:0.04f} {t:0.02f} seconds"
-          f"\t alpha 1 {self.details.alpha[0]:0.03f}\t alpha 2 {self.details.alpha[1]:0.03f}")
+          f"\t alpha 1 {alpha[0]:0.03f}\t alpha 2 {alpha[1]:0.03f}")
 
       for cb in post_epoch_callbacks: cb(self.model, e)
 
