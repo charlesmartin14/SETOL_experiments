@@ -44,24 +44,9 @@ def whiten(m, LR):
         c.bias[:] = 1.
 
 
-if __name__ == "__main__":
-  ARGS = sys.argv.copy()
-  
-  DS, C, H, W = "MNIST", 1, 28, 28
-  if   "FASHION" in ARGS: DS, C, H, W = "FASHION", 1, 28, 28
-  elif "CIFAR10" in ARGS: DS, C, H, W = "CIFAR10", 3, 32, 32
-  
-  WHITEN = "WHITEN" in ARGS
-      
-  # NOTE: If you use this, then the non-determinism guarantees do not hold.
-  RESTART = "RESTART" in ARGS
-
-  LR_search = "LR" in ARGS
-  
+def main(DS, RUNS, LR_search, SCALES, WHITEN, C=1, H=28, W=28, RESTART=False):
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
-
-  RUNS = 5  # number of times to run with a different seed.
 
   # Ensure that a different initialization exists for each seed.
   for run in range(RUNS):
@@ -70,7 +55,6 @@ if __name__ == "__main__":
       m = MLP2(widths=(300, 100), H=H, W=W, C=C)
       t = Trainer(m)
       t.save(run, 0, "SETOL/TEST")
-
   
   m = MLP2(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
@@ -79,7 +63,7 @@ if __name__ == "__main__":
       if layer == "all": continue
       layer = f"{layer}_WHITENED"
   
-    for scale in range(6):
+    for scale in range(SCALES):
       if LR_search:
         BS = 32
         LR = [lr * 2**scale for lr in base_LR]
@@ -89,6 +73,7 @@ if __name__ == "__main__":
         BS = 2 ** scale
         LR = base_LR
         model_name = f"SETOL/{DS}/{opt}/{layer}/BS_{BS}"
+
       for run in range(RUNS):
         if Trainer.metrics_path(run, model_name).exists(): continue
         print(model_name, run)
@@ -112,3 +97,23 @@ if __name__ == "__main__":
         print(f"{model_name} Batch size {BS} converged at epoch {E}")
         print(Trainer.load_details(run, E, model_name))
         print()
+
+
+if __name__ == "__main__":
+  # NOTE: If you use this, then the non-determinism guarantees do not hold.
+  RESTART = "RESTART" in sys.argv
+
+  WHITEN = "WHITEN" in sys.argv
+  
+  LR_search = "LR" in sys.argv
+
+  RUNS = 5  # number of times to run with a different seed.
+
+  SCALES = 6  # Number of different learning rates or batch sizes to examine
+
+  DS, C, H, W = "MNIST", 1, 28, 28
+  if   "FASHION" in sys.argv: DS, C, H, W = "FASHION", 1, 28, 28
+  elif "CIFAR10" in sys.argv: DS, C, H, W = "CIFAR10", 3, 32, 32
+
+      
+  main(DS, RUNS, LR_search, SCALES, WHITEN, C, H, W, RESTART)
