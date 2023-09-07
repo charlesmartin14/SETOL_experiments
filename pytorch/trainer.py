@@ -115,13 +115,14 @@ class Trainer(object):
     return pd.read_pickle(Trainer.details_path(run, model_name))
 
   @staticmethod
-  def load_metrics(run, model_name):
-    return Trainer._load_metrics(Trainer.metrics_path(run, model_name))
+  def load_metrics(run, model_name, VERBOSE=False):
+    return Trainer._load_metrics(Trainer.metrics_path(run, model_name), VERBOSE=VERBOSE)
 
   @staticmethod
-  def _load_metrics(save_file):
+  def _load_metrics(save_file, VERBOSE=False):
     if not save_file.exists():
-      print(f"save file {save_file} not found")
+      if VERBOSE:
+        print(f"save file {save_file} not found")
       return None, None, None, None, None, None
 
     with open(str(save_file), "rb") as fp:
