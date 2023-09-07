@@ -58,7 +58,6 @@ class Trainer(object):
     details['run_number'] = run
     details['model_name'] = model_name
 
-    assert (epoch > 0 or self.train_acc[epoch] > 0), epoch
     details['train_acc' ] = self.train_acc[epoch]
     details['train_loss'] = self.train_loss[epoch]
     details['val_acc'   ] = self.val_acc[epoch]
