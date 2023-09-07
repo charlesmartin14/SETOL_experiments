@@ -127,11 +127,6 @@ class Trainer(object):
       test_loss  = np.load(fp)
     return train_acc, train_loss, val_acc, val_loss, test_acc, test_loss
 
-  @staticmethod
-  def freeze_layer(layer):
-    for p in layer.framework_layer.layer.parameters(): p.requires_grad = False
-    layer.Frozen=True
-
 
   def train_loop(self, model_name, run, epochs, batch_loader,
     starting_epoch = 0,
