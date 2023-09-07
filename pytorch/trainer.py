@@ -232,7 +232,7 @@ class Trainer(object):
         self.train_loss[e] += loss.item()
         self.train_acc[e] += acc
 
-        for cb in post_batch_callbacks: cb(model, b, e)
+        for cb in post_batch_callbacks: cb(self.model, b, e)
 
       self.train_loss[e] /= ( (b+1) if loss_aggregation == "mean" else N_tr )
       self.train_acc[e] /= N_tr
@@ -283,7 +283,7 @@ class Trainer(object):
         print(f"{model_name} run {run} epoch {e} loss {tr_l:0.04f} train accuracy {tr_a:0.04f} test accuracy {te_a:0.04f} {t:0.02f} seconds"
         f"\t alpha 1 {self.details.alpha[0]:0.03f}\t alpha 2 {self.details.alpha[1]:0.03f}")
 
-      for cb in post_epoch_callbacks: cb(model, e)
+      for cb in post_epoch_callbacks: cb(self.model, e)
 
       if early_stop is not None:
         if early_stop(self.train_loss[e]): break
