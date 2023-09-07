@@ -212,11 +212,8 @@ class Trainer(object):
       N_tr = 0 # = number of train examples seen
       for b, (features, labels) in enumerate(batch_loader.batches("train")):
         opt.zero_grad()
-        # labels = labels.to(device)
-        # features = preprocessing(features.to(device))
         preds = self.model(features)
         loss = loss_fn(preds, labels)
-
         loss.backward()
         opt.step()
 
@@ -237,8 +234,6 @@ class Trainer(object):
         N_te, loss, acc = 0, 0., 0.
         for b, (features, labels) in enumerate(batch_loader.batches(mode)):
           N_te += len(labels)
-          # labels = labels.to(device)
-          # features = preprocessing(features.to(device))
           preds = self.model(features) #.to(device))
           acc  += sum(torch.argmax(p)==torch.argmax(l) for p, l in zip(preds, labels))
           loss += loss_fn(preds, labels).item()
