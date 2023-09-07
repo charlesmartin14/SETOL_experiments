@@ -36,39 +36,49 @@ class Trainer(object):
     self.details, self.watcher = None, None
 
   @staticmethod
-  def _save_dir(run, e, model_name):
+  def save_dir(run, e, model_name):
     save_dir = Path(f"./saved_models/{model_name}/run_{run}_ep_{e}")
     return save_dir
 
   @staticmethod
-  def _metrics_path(run, model_name):
+  def metrics_path(run, model_name):
     return Path(f"./saved_models/{model_name}/metrics_run_{run}.npy")
 
-  def ww_analyze(self, run, ep, model_name, VERBOSE=True):
+  @staticmethod
+  def details_path(run, model_name):
+    return Path(f"./saved_models/{model_name}/WW_details_run_{run}")
+
+  def ww_analyze(self, run, epoch, model_name):
     if not hasattr(self, "watcher") or self.watcher is None:
       self.watcher = WeightWatcher(model=self.model, log_level="ERROR")
 
-    start_time = time()
-    self.details = self.watcher.analyze(layers=[], min_evals=50, vectors=True, detX=True, plot=False)
+    details = self.watcher.analyze(layers=[], min_evals=50, vectors=True, detX=True, plot=False)
 
-    if VERBOSE:
-      a0 = self.details.alpha[0]
-      D0 = self.details.D[0]
-      a1 = self.details.alpha[1]
-      D1 = self.details.D[1]
-      print(f"\talpha: {a0:0.03f} D_KS: {D0:0.03f}\talpha: {a1:0.03f} D_KS: {D1:0.03f}")
+    details['epoch'] = epoch
+    details['run_number'] = run
+    details['model_name'] = model_name
+
+    assert (epoch > 0 or self.train_acc[epoch] > 0), epoch
+    details['val_acc'   ] = self.val_acc[epoch]
+    details['val_loss'  ] = self.val_loss[epoch]
+    details['test_acc'  ] = self.test_acc[epoch]
+    details['test_loss' ] = self.test_loss[epoch]
+    details['train_acc' ] = self.train_acc[epoch]
+    details['train_loss'] = self.train_loss[epoch]
+
+    if self.details is None:  self.details = details
+    else:                     self.details = self.details.append(details)
+
 
   def save(self, run, e, model_name):
     self.save_metrics(run, model_name)
 
-    save_path = self._save_dir(run, e, model_name)
+    save_path = self.save_dir(run, e, model_name)
     save_path.mkdir(parents=True, exist_ok=True)
-
-    self.save_details(run, e, model_name)
     torch.save(self.model.state_dict(), save_path / "model")
 
   def save_metrics(self, run, model_name):
-    metrics_file = self._metrics_path(run, model_name)
+    metrics_file = self.metrics_path(run, model_name)
     if not metrics_file.parent.exists():
       metrics_file.parent.mkdir(parents=True, exist_ok=True)
     with open(metrics_file, "wb") as fp:
@@ -79,38 +89,34 @@ class Trainer(object):
       np.save(fp, self.test_acc)
       np.save(fp, self.test_loss)
 
-  def save_details(self, run, e, model_name):
-    save_path = self._save_dir(run, e, model_name)
+  def save_details(self, run, model_name):
+    save_path = self.details_path(run, model_name)
     save_path.mkdir(parents=True, exist_ok=True)
     try:
-      self.details.to_pickle(save_path / "WW_details")
+      self.details.to_pickle(save_path)
     except AttributeError:
       pass
 
 
-  def load(self, run, e, model_name, strict=True):
-    save_path = self._save_dir(run, e, model_name)
+  def load(self, run, e, model_name):
+    save_path = self.save_dir(run, e, model_name)
     if not (save_path / "model").exists():
       msg = f"Attempting to load model {model_name} run {run} ep {e} that does not exist"
       raise RuntimeError(msg)
 
     self.model.load_state_dict(torch.load(save_path / "model"))
-    self.details = self._load_details      (save_path)
+    self.details = self.load_details(run, model_name)
 
     metrics = self.load_metrics(run, model_name)
     self.train_acc, self.train_loss, self.val_acc, self.val_loss, self.test_acc, self.test_loss = metrics
 
   @staticmethod
-  def load_details(run, e, model_name):
-    return Trainer._load_details(Trainer._save_dir(run, e, model_name))
-
-  @staticmethod
-  def _load_details(save_path):
-    return pd.read_pickle(save_path / "WW_details")
+  def load_details(run, model_name):
+    return pd.read_pickle(Trainer.details_path(run, model_name))
 
   @staticmethod
   def load_metrics(run, model_name):
-    return Trainer._load_metrics(Path(Trainer._metrics_path(run, model_name)))
+    return Trainer._load_metrics(Trainer.metrics_path(run, model_name))
 
   @staticmethod
   def _load_metrics(save_file):
