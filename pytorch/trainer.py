@@ -90,7 +90,7 @@ class Trainer(object):
 
   def save_details(self, run, model_name):
     save_path = self.details_path(run, model_name)
-    save_path.mkdir(parents=True, exist_ok=True)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
     try:
       self.details.to_pickle(save_path)
     except AttributeError:
