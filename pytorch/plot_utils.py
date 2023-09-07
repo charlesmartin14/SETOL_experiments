@@ -7,13 +7,28 @@ from weightwatcher import WeightWatcher
 from trainer import Trainer
 from utils import last_epoch
 
+from utils import metric_error_bars, DF_error_bars
+
+def set_styles():
+  SMALL_SIZE = 10
+  MEDIUM_SIZE = 16
+  LARGE_SIZE = 30
+
+  plt.rc('font', size=LARGE_SIZE)  # controls default text sizes
+  plt.rc('axes', titlesize=MEDIUM_SIZE)  # fontsize of the axes title
+  plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+  plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+  plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+  plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+  plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = True, LOSS = True):
   y_ax_name = f"{'train' if TRAIN else 'test'} {'loss' if LOSS else 'error'}"
 
-  if not Trainer._save_dir(runs[0], 0, model_name).exists(): return
+  if not Trainer.save_dir(runs[0], 0, model_name).exists(): return
 
   fig, axes = plt.subplots(ncols=len(trained_layers), nrows=1, figsize=(6*len(trained_layers), 4))
+  set_styles()
 
   if len(trained_layers) == 1: axes = [axes]
 
@@ -91,6 +106,7 @@ def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
 
 def plot_shuffled_accuracy(DS, OPT, layer, LR, runs, run_name, SHUFFLE):
   fig, axes = plt.subplots(ncols = 4, nrows = 1, figsize=(18, 4))
+  set_styles()
 
   SHUFFLE = 'shuffled' if SHUFFLE else 'smoothed'
 
