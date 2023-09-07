@@ -1,3 +1,12 @@
+# artifacts
+saved_models
+datasets
+ww-img*
+
+# PyCharm
+.idea
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
