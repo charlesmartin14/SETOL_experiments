@@ -27,10 +27,6 @@ hyper_params = [
     ("all", "SGD", [0.01, 0.01, 0.01]),
     ("FC1", "SGD", [0.01,    0,    0]),
     ("FC2", "SGD", [   0, 0.01,    0]),
-    
-    ("all", "ADAM", [0.001, 0.001, 0.001]),
-    ("FC1", "ADAM", [0.001,     0,     0]),
-    ("FC2", "ADAM", [    0, 0.001,     0]),
 ]
 
 
@@ -60,7 +56,7 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
   
   m = MLP3(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
-  for layer, OPT, base_LR in hyper_params:
+  for layer, base_LR in hyper_params:
     if WHITEN:
       if layer == "all": continue
       layer = f"{layer}_WHITENED"
@@ -69,12 +65,12 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
       if search_param == "LR":
         BS = 32
         LR = [lr * 2**scale for lr in base_LR]
-        model_name = f"SETOL/{DS}/{OPT}/{layer}/LR_{2**scale}"
+        model_name = f"SETOL/{DS}/{layer}/LR_{2**scale}"
       else:
         # BS search
         BS = 2 ** scale
         LR = base_LR
-        model_name = f"SETOL/{DS}/{OPT}/{layer}/BS_{BS}"
+        model_name = f"SETOL/{DS}/{layer}/BS_{BS}"
 
       for run in range(RUNS):
         if Trainer.metrics_path(run, model_name).exists(): continue
@@ -93,7 +89,7 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
 
         reset_random_seeds(seed_value=run+1)
         t.train_loop(model_name, run, 1000, loader, starting_epoch = starting_epoch,
-          LR=LR, opt=OPT,
+          LR=LR,
           loss="CCE", early_stop=EarlyStopper(3, 0.0001))
         E = last_epoch(run, model_name)
         print(f"{model_name} Batch size {BS} converged at epoch {E}")

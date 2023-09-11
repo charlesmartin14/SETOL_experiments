@@ -79,7 +79,7 @@ def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=Tr
     print(f"saved to {save_file}")
 
 
-def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
+def main(DS, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
   TRAIN = PILDataSet(True,  DS=DS)
   TEST  = PILDataSet(False, DS=DS)
   loader = PreLoader(DS, TRAIN, TEST, batch_size=10000)
@@ -100,7 +100,7 @@ def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
     if WHITEN:
       layer = f"{layer}_WHITENED"
     for scale in range(SCALES):
-      model_name = f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}"
+      model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
       shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=True)
       shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True, XMIN=True)
       shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=False)
@@ -110,8 +110,6 @@ def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
 if __name__ == "__main__":
   ARGS = sys.argv.copy()
   WHITEN = "WHITEN" in ARGS
-
-  OPT = "ADAM" if "ADAM" in ARGS else "SGD"
 
   DS, C, H, W = "MNIST", 1, 28, 28
   if   "FASHION" in ARGS: DS, C, H, W = "FASHION", 1, 28, 28
@@ -123,4 +121,4 @@ if __name__ == "__main__":
   search_param = "BS"
   if "LR" in ARGS: search_param = "LR"
 
-  main(DS, OPT, RUNS, SCALES, search_param, WHITEN, C, H, W)
+  main(DS, RUNS, SCALES, search_param, WHITEN, C, H, W)

@@ -11,10 +11,10 @@ def last_epoch(run, model_name):
   return np.argmin(train_acc[1:] > 0)
 
 
-def metric_error_bars(DS, OPT, layer, scales, runs, search_param="BS"):
+def metric_error_bars(DS, layer, scales, runs, search_param="BS"):
   all_metrics = []
   for scale in scales:
-    model_name = f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}"
+    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
     metrics = [
       [ m[last_epoch(run, model_name)] for m in Trainer.load_metrics(run, model_name)]
       for run in runs
@@ -29,6 +29,7 @@ def metric_error_bars(DS, OPT, layer, scales, runs, search_param="BS"):
   means, stdevs = tuple(zip(*all_metrics))
   return means, stdevs
 
+
 def average_DFS(model_name, runs, WW_metrics):
   df_concat = pd.concat([
     Trainer.load_details(run, model_name).query(f"epoch == {last_epoch(run, model_name)}").loc[:,WW_metrics]
@@ -39,18 +40,18 @@ def average_DFS(model_name, runs, WW_metrics):
 
   return means, stdevs
 
-def DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param="BS"):
+
+def DF_error_bars(DS, layer, scales, runs, WW_metrics, search_param="BS"):
   mean_DFs, stdev_DFs = zip(*[
-    average_DFS(f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}", runs, WW_metrics)
+    average_DFS(f"SETOL/{DS}/{layer}/{search_param}_{2**scale}", runs, WW_metrics)
     for scale in scales
   ])
 
   return mean_DFs, stdev_DFs
 
 
-
-def aggregate_DFs(DS, OPT, search_param, layer, scale, runs):
-  model_name = f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}"
+def aggregate_DFs(DS, search_param, layer, scale, runs):
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   for run in runs:
     details_path = Trainer.details_path(run, model_name)
@@ -82,6 +83,3 @@ def aggregate_DFs(DS, OPT, search_param, layer, scale, runs):
       else:          DF = DF.append(details)
 
     DF.to_pickle(details_path)
-
-
-

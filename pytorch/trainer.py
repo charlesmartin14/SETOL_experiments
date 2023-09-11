@@ -141,9 +141,8 @@ class Trainer(object):
     LR = None,
     WD = None,
     preprocessing = None,
-    post_batch_callbacks=(),
     post_epoch_callbacks=(),
-    opt = "SGD", loss = "MSE",
+    loss = "CCE",
     early_stop = None,
     VERBOSE=True,
     loss_aggregation="mean",
@@ -187,20 +186,9 @@ class Trainer(object):
         if lr > 0
       ]
 
-    opt = opt.upper()
-    if opt == "SGD":
-      if LR is None: LR = [0.01 for _ in self.model.children()]
-      if WD is None: WD = [0] * len(self.model.children())
-      opt = torch.optim.SGD(make_param_groups(self.model.children(), LR, WD), momentum=0)
-    elif opt == "ADAMW":
-      if LR is None: LR = [0.001 for _ in self.model.children()]
-      if WD is None: WD = [0.01] * len(self.model.children())
-      opt = torch.optim.AdamW(make_param_groups(self.model.children(), LR, WD))
-    elif opt == "ADAM":
-      if LR is None: LR = [0.001 for _ in self.model.children()]
-      if WD is None: WD = [0] * len(self.model.children())
-      opt = torch.optim.Adam(make_param_groups(self.model.children(), LR, WD))
-    else: raise ValueError(f"Optimizer {opt} not recognized")
+    if LR is None: LR = [0.01 for _ in self.model.children()]
+    if WD is None: WD = [0] * len(self.model.children())
+    opt = torch.optim.SGD(make_param_groups(self.model.children(), LR, WD), momentum=0)
 
     loss = loss.upper()
     if loss == "MSE": loss_fn = torch.nn.MSELoss(reduction=loss_aggregation)
@@ -230,8 +218,6 @@ class Trainer(object):
         N_tr += len(labels)
         self.train_loss[e] += loss.item()
         self.train_acc[e] += acc
-
-        for cb in post_batch_callbacks: cb(self.model, b, e)
 
       self.train_loss[e] /= ( (b+1) if loss_aggregation == "mean" else N_tr )
       self.train_acc[e] /= N_tr

@@ -54,18 +54,18 @@ def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = Tru
 
 
 
-def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, search_param="BS"):
+def plot_by_scales(DS, layer, scales, runs, WW_metrics, trained_layer = 0, search_param="BS"):
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)), 4))
   set_styles()
 
-  means, stdevs = metric_error_bars(DS, OPT, layer, scales, runs, search_param=search_param)
+  means, stdevs = metric_error_bars(DS, layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
   train_acc_SD, train_loss_SD, _, _, test_acc_SD, test_loss_SD = tuple(zip(*stdevs))
 
-  mean_DFs, stdev_DFs = DF_error_bars(DS, OPT, layer, scales, runs, WW_metrics, search_param=search_param)
+  mean_DFs, stdev_DFs = DF_error_bars(DS, layer, scales, runs, WW_metrics, search_param=search_param)
 
   def populate_tr(ax, scale, X, xerr):
     ax.errorbar(X, 1 - train_acc[scale], xerr=xerr, yerr=train_acc_SD[scale], fmt='.',
@@ -102,7 +102,6 @@ def plot_by_scales(DS, OPT, layer, scales, runs, WW_metrics, trained_layer = 0, 
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
 
-    model_base = f"{DS} {OPT} {layer} {search_param} search"
     ax.set(title=f"MLP3: {WW_metric} for {layer_names[trained_layer]} vs. train/test error\nVarious {search_param_long} considered", xlabel= WW_metric)
     ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
 
@@ -123,14 +122,14 @@ def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
     ax.legend()
 
 
-def plot_shuffled_accuracy(DS, OPT, layer, LR, runs, run_name, SHUFFLE):
+def plot_shuffled_accuracy(DS, layer, LR, runs, run_name, SHUFFLE):
   fig, axes = plt.subplots(ncols = 4, nrows = 1, figsize=(18, 4))
   set_styles()
 
   SHUFFLE = 'shuffled' if SHUFFLE else 'smoothed'
 
   for run in runs:
-    model_name = f"SETOL/{DS}/{OPT}/{layer}"
+    model_name = f"SETOL/{DS}/{layer}"
     train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
     if train_acc is None:
       print(f"metrics for {model_name} not found")
