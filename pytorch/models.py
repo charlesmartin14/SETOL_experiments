@@ -20,13 +20,13 @@ class BaseModel(torch.nn.Module):
         return [c for c in self.op.children() if isinstance(c, (torch.nn.Linear, torch.nn.Conv2d))]
 
     
-class MLP2(BaseModel):
+class MLP3(BaseModel):
     # 2 hidden layers, not counting the output layer.
     def __init__(self, widths = (300, 100),
                  H=32, W=32, C=3,
                  categories=10):
         assert len(widths) == 2, widths
-        super(MLP2, self).__init__(H, W, C, categories)
+        super(MLP3, self).__init__(H, W, C, categories)
 
         self.w1, self.w2 = widths
 

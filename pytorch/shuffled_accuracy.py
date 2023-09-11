@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from trainer import Trainer, PreLoader, EarlyStopper
-from models import MLP2
+from models import MLP3
 from pildataset import PILDataSet
 
 from utils import last_epoch
@@ -83,7 +83,7 @@ def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
   loader = PreLoader(DS, TRAIN, TEST, batch_size=10000)
   loader.split_val(0.1)
 
-  m = MLP2(widths=(300, 100), H=H, W=W, C=C)
+  m = MLP3(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
 
   layer_data = [

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from trainer import Trainer, PreLoader, EarlyStopper
-from models import MLP2
+from models import MLP3
 from pildataset import PILDataSet
 from utils import last_epoch
 
@@ -54,11 +54,11 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
   for run in range(RUNS):
     if not Trainer.save_dir(run, 0, "SETOL/TEST").exists():
       reset_random_seeds(seed_value=run+1)
-      m = MLP2(widths=(300, 100), H=H, W=W, C=C)
+      m = MLP3(widths=(300, 100), H=H, W=W, C=C)
       t = Trainer(m)
       t.save(run, 0, "SETOL/TEST")
   
-  m = MLP2(widths=(300, 100), H=H, W=W, C=C)
+  m = MLP3(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
   for layer, OPT, base_LR in hyper_params:
     if WHITEN:
