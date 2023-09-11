@@ -64,7 +64,7 @@ def plot_loss(DS, layer, search_param, scale, runs, trained_layers, WW_metric, L
 
 
 
-def plot_by_scales(DS, layer, scales, runs, WW_metrics, trained_layer = 0, search_param="BS"):
+def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_param="BS"):
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
@@ -102,17 +102,17 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, trained_layer = 0, searc
   for ax, WW_metric in zip(axes[1:], WW_metrics):
     for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
       populate_tr( ax, scale,
-        X     = mean_details.loc[trained_layer, WW_metric],
-        xerr  = stdev_details.loc[trained_layer, WW_metric])
+        X     = mean_details.loc[plot_layer, WW_metric],
+        xerr  = stdev_details.loc[plot_layer, WW_metric])
     for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
       populate_te( ax, scale,
-        X = mean_details.loc[trained_layer, WW_metric],
-        xerr = stdev_details.loc[trained_layer, WW_metric])
+        X = mean_details.loc[plot_layer, WW_metric],
+        xerr = stdev_details.loc[plot_layer, WW_metric])
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
 
-    ax.set(title=f"MLP3: {WW_metric} for {layer_names[trained_layer]} vs. train/test error\nVarious {search_param_long} considered", xlabel= WW_metric)
+    ax.set(title=f"MLP3: {WW_metric} for {layer_names[plot_layer]} vs. train/test error\nVarious {search_param_long} considered", xlabel= WW_metric)
     ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
 
 
@@ -128,9 +128,9 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
     details = Trainer.load_details(run, model_name)
     E = last_epoch(run, model_name)
     for l, ax in zip(layers, axes):
-      metric_data = np.zeros((E+1,))
-      for e in range(1, E+1):
-        metric_data[e] = details.query(f'epoch == {e}').loc[l, WW_metric]
+      metric_data = np.zeros((E,))
+      for e in range(E):
+        metric_data[e] = details.query(f'epoch == {e+1}').loc[l, WW_metric]
       ax.plot(metric_data, '+', label = f"seed = {run}")
   for l, ax in zip(layers, axes):
     ax.set(title=f"{model_name}\nlayer FC{l+1}", xlabel="epoch", ylabel=WW_metric)
