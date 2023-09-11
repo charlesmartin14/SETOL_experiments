@@ -22,35 +22,41 @@ def set_styles():
   plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
   plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
-def plot_loss(model_name, runs, run_name, trained_layers, WW_metric, TRAIN = True, LOSS = True):
-  y_ax_name = f"{'train' if TRAIN else 'test'} {'loss' if LOSS else 'error'}"
+
+def plot_loss(DS, layer, search_param, scale, runs, trained_layers, WW_metric, LOSS = True):
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   if not Trainer.save_dir(runs[0], 0, model_name).exists(): return
 
-  fig, axes = plt.subplots(ncols=len(trained_layers), nrows=1, figsize=(6*len(trained_layers), 4))
+  L = len(trained_layers)
+  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(trained_layers)))
   set_styles()
 
-  if len(trained_layers) == 1: axes = [axes]
-
   SKIP = 2
-  for ax, layer in zip(axes, trained_layers):
-    for run in runs:
-      train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
-      X = np.arange(SKIP, last_epoch(run, model_name))
-
-      metric_vals = np.zeros(X.shape)
-      for e in X:
-        details = Trainer.load_details(run, e, model_name)
-        metric_vals[e-SKIP] = details.loc[layer, WW_metric]
-      if LOSS:
-        if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=run_name(run))
-        else:     ax.plot(metric_vals, test_loss[X], '+', label=run_name(run))
-      else:
-        if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=run_name(run))
-        else:     ax.plot(metric_vals, 1-test_acc[X], '+', label=run_name(run))
-    ax.legend()
-    ax.set(title=f"{model_name}\nAll epochs\n vs. {y_ax_name} {WW_metric} for layer {layer}",
-         ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
+  if len(trained_layers) == 1: axes = [axes]
+  plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
+                    wspace=0.4,
+                    hspace=0.5)
+  for ax_row, layer in zip(axes, trained_layers):
+    for ax, TRAIN in zip(ax_row, [True, False]):
+      y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
+      for run in runs:
+        train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+        X = np.arange(SKIP, last_epoch(run, model_name))
+  
+        metric_vals = np.zeros(X.shape)
+        details = Trainer.load_details(run, model_name)
+        for e in X:
+          metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[layer, WW_metric]
+        if LOSS:
+          if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=f"seed={run+1}", alpha=0.5)
+          else:     ax.plot(metric_vals, test_loss [X], '+', label=f"seed={run+1}", alpha=0.5)
+        else:
+          if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
+          else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
+      ax.legend()
+      ax.set(title=f"{model_name}\n{y_ax_name} vs. {WW_metric} for layer {layer}",
+           ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
 
 
 
@@ -143,10 +149,10 @@ def plot_shuffled_accuracy(DS, layer, LR, runs, run_name, SHUFFLE):
       shuffled_test_loss  = np.load(fp)
 
     E = last_epoch(run, model_name)
-    axes[0].plot(train_acc[1:E]  - shuffled_train_acc[1:] , '-', label = run_name(run))
+    axes[0].plot(train_acc [1:E] - shuffled_train_acc [1:], '-', label = run_name(run))
     axes[1].plot(train_loss[1:E] - shuffled_train_loss[1:], '-', label = run_name(run))
-    axes[2].plot(test_acc[1:E]   - shuffled_test_acc[1:]  , '-', label = run_name(run))
-    axes[3].plot(test_loss[1:E]  - shuffled_test_loss[1:],  '-', label = run_name(run))
+    axes[2].plot(test_acc  [1:E] - shuffled_test_acc  [1:], '-', label = run_name(run))
+    axes[3].plot(test_loss [1:E] - shuffled_test_loss [1:], '-', label = run_name(run))
 
   axes[0].set(xlabel="epochs", ylabel=f"{SHUFFLE} train error", title=f"{model_name}\ntrain error - {SHUFFLE} train error")
   axes[1].set(xlabel="epochs", ylabel=f"{SHUFFLE} train loss",  title=f"{model_name}\ntrain loss - {SHUFFLE} train loss")
