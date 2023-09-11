@@ -36,14 +36,16 @@ def SVD_shuffle(c, xmin, SHUFFLE=True):
   c.weight = torch.nn.Parameter(U @ torch.diag(S) @ V)
 
 
-def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=True):
+def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=True, XMIN=True):
   SHUFFLED = 'shuffled' if SHUFFLE else 'smoothed'
+  FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
+  FIELD_short = ['detX', 'xmin'][XMIN]
 
   for run in runs:
-    save_file = f"./saved_models/{model_name}/{SHUFFLED}_accuracy_run_{run}.npy"
+    save_file = f"./saved_models/{model_name}/{FIELD_short}_{SHUFFLED}_accuracy_run_{run}.npy"
     if Path(save_file).exists(): return
 
-    print(f"{'shuffled' if SHUFFLE else 'truncated'} accuracy {model_name} run {run}")
+    print(f"{'shuffled' if SHUFFLE else 'truncated'} {FIELD_short} accuracy {model_name} run {run}")
     E = last_epoch(run, model_name)
     shuffled_train_acc  = np.zeros(E+1)
     shuffled_train_loss = np.zeros(E+1)
@@ -58,8 +60,8 @@ def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=Tr
       t.model.to(device)
       for c, lr, layer_id in zip(t.model.children(), LR, range(len(t.model.children()))):
         if lr > 0:
-          xmin = details.query(f"epoch == {e}").loc[layer_id, "xmin"]
-          SVD_shuffle(c, xmin, SHUFFLE)
+          lambda_min = details.query(f"epoch == {e}").loc[layer_id, FIELD]
+          SVD_shuffle(c, lambda_min, SHUFFLE)
       shuffled_train_acc[e], shuffled_train_loss[e] = t.evaluate(loader, "train")
       shuffled_val_acc  [e], shuffled_val_loss  [e] = t.evaluate(loader, "val")
       shuffled_test_acc [e], shuffled_test_loss [e] = t.evaluate(loader, "test")
@@ -99,8 +101,10 @@ def main(DS, OPT, RUNS, SCALES, search_param, WHITEN=False, C=1, H=28, W=28):
       layer = f"{layer}_WHITENED"
     for scale in range(SCALES):
       model_name = f"SETOL/{DS}/{OPT}/{layer}/{search_param}_{2**scale}"
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False)
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True)
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=True)
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True, XMIN=True)
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=False)
+      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True, XMIN=False)
 
 
 if __name__ == "__main__":
