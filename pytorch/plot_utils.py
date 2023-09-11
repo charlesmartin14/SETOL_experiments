@@ -26,7 +26,11 @@ def set_styles():
 def plot_loss(DS, layer, search_param, scale, runs, trained_layers, WW_metric, LOSS = True):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
-  if not Trainer.save_dir(runs[0], 0, model_name).exists(): return
+  runs = [
+    run for run in runs
+    if Trainer.save_dir(run, 0, model_name).exists()
+  ]
+  if not runs: return
 
   L = len(trained_layers)
   fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(trained_layers)))
@@ -112,19 +116,24 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, trained_layer = 0, searc
     ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
 
 
-def plot_over_epochs(model_name, runs, run_name, WW_metric, layers):
+def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
   set_styles()
 
+  if len(layers) == 1: axes = [axes]
+
   for run in runs:
+    details = Trainer.load_details(run, model_name)
     E = last_epoch(run, model_name)
-    metric_data = np.zeros((len(layers), E))
-    for e in range(E):
-      metric_data[:, e] = Trainer.load_details(run, e+1, model_name).loc[layers, WW_metric]
     for l, ax in zip(layers, axes):
-      ax.plot(metric_data[l,:], '+', label = run_name(run))
+      metric_data = np.zeros((E+1,))
+      for e in range(1, E+1):
+        metric_data[e] = details.query(f'epoch == {e}').loc[l, WW_metric]
+      ax.plot(metric_data, '+', label = f"seed = {run}")
   for l, ax in zip(layers, axes):
-    ax.set(title=f"{model_name}\nlayer {l}", xlabel="epoch", ylabel=WW_metric)
+    ax.set(title=f"{model_name}\nlayer FC{l+1}", xlabel="epoch", ylabel=WW_metric)
     ax.legend()
 
 
