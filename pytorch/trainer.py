@@ -41,8 +41,9 @@ class Trainer(object):
     return save_dir
 
   @staticmethod
-  def metrics_path(run, model_name):
-    return Path(f"./saved_models/{model_name}/metrics_run_{run}.npy")
+  def metrics_path(run, model_name, save_file=None):
+    if save_file is None: save_file = f"metrics_run_{run}.npy"
+    return Path(f"./saved_models/{model_name}/{save_file}")
 
   @staticmethod
   def details_path(run, model_name):
@@ -76,8 +77,8 @@ class Trainer(object):
     save_path.mkdir(parents=True, exist_ok=True)
     torch.save(self.model.state_dict(), save_path / "model")
 
-  def save_metrics(self, run, model_name):
-    metrics_file = self.metrics_path(run, model_name)
+  def save_metrics(self, run, model_name, save_file=None):
+    metrics_file = self.metrics_path(run, model_name, save_file)
     if not metrics_file.parent.exists():
       metrics_file.parent.mkdir(parents=True, exist_ok=True)
     with open(metrics_file, "wb") as fp:
@@ -114,8 +115,10 @@ class Trainer(object):
     return pd.read_pickle(Trainer.details_path(run, model_name))
 
   @staticmethod
-  def load_metrics(run, model_name, VERBOSE=False):
-    return Trainer._load_metrics(Trainer.metrics_path(run, model_name), VERBOSE=VERBOSE)
+  def load_metrics(run, model_name, VERBOSE=False, save_file=None):
+    if save_file is None: save_file = Trainer.metrics_path(run, model_name)
+    else:                 save_file = Trainer.metrics_path(run, model_name).parent / save_file
+    return Trainer._load_metrics(save_file, VERBOSE=VERBOSE)
 
   @staticmethod
   def _load_metrics(save_file, VERBOSE=False):

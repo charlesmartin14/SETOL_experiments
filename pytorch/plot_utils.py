@@ -137,36 +137,76 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
     ax.legend()
 
 
-def plot_shuffled_accuracy(DS, layer, LR, runs, run_name, SHUFFLE):
-  fig, axes = plt.subplots(ncols = 4, nrows = 1, figsize=(18, 4))
+
+def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
+    XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
+    ylims=None,     # Maximum values to set for each plot so they can be compared
+    E0=4  # Skip the first few epochs so that the variance is contained.
+  ):
+  fig, axes = plt.subplots(ncols = 2, nrows = 1, figsize=(13, 4))
   set_styles()
 
-  SHUFFLE = 'shuffled' if SHUFFLE else 'smoothed'
+  if ylims is None: ylims = (None, None)
+
+  FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
+  FIELD_short = ['detX', 'xmin'][XMIN]
+
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+  Emin = min(last_epoch(run, model_name) for run in runs)
+
+  train_acc        = np.zeros((len(runs), Emin+1))
+  train_loss       = np.zeros((len(runs), Emin+1))
+  test_acc         = np.zeros((len(runs), Emin+1))
+  test_loss        = np.zeros((len(runs), Emin+1))
+
+  trunc_train_acc  = np.zeros((len(runs), Emin+1))
+  trunc_train_loss = np.zeros((len(runs), Emin+1))
+  trunc_test_acc   = np.zeros((len(runs), Emin+1))
+  trunc_test_loss  = np.zeros((len(runs), Emin+1))
+
 
   for run in runs:
-    model_name = f"SETOL/{DS}/{layer}"
-    train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
-    if train_acc is None:
+    metrics = Trainer.load_metrics(run, model_name)
+    if metrics[0] is None:
       print(f"metrics for {model_name} not found")
       continue
 
-    save_file = f"./saved_models/{model_name}/{run_name(run)}_{SHUFFLE}_accuracy.npy"
-    with open(save_file, "rb") as fp:
-      shuffled_train_acc  = np.load(fp)
-      shuffled_train_loss = np.load(fp)
-      shuffled_test_acc   = np.load(fp)
-      shuffled_test_loss  = np.load(fp)
+    train_acc[run,:Emin+1], train_loss[run,:Emin+1], _, _, test_acc[run,:Emin+1], test_loss[run,:Emin+1] = [
+      m[:Emin+1]
+      for m in metrics
+    ]
 
-    E = last_epoch(run, model_name)
-    axes[0].plot(train_acc [1:E] - shuffled_train_acc [1:], '-', label = run_name(run))
-    axes[1].plot(train_loss[1:E] - shuffled_train_loss[1:], '-', label = run_name(run))
-    axes[2].plot(test_acc  [1:E] - shuffled_test_acc  [1:], '-', label = run_name(run))
-    axes[3].plot(test_loss [1:E] - shuffled_test_loss [1:], '-', label = run_name(run))
 
-  axes[0].set(xlabel="epochs", ylabel=f"{SHUFFLE} train error", title=f"{model_name}\ntrain error - {SHUFFLE} train error")
-  axes[1].set(xlabel="epochs", ylabel=f"{SHUFFLE} train loss",  title=f"{model_name}\ntrain loss - {SHUFFLE} train loss")
-  axes[2].set(xlabel="epochs", ylabel=f"{SHUFFLE} test error",  title=f"{model_name}\ntest error - {SHUFFLE} test error")
-  axes[3].set(xlabel="epochs", ylabel=f"{SHUFFLE} test loss",   title=f"{model_name}\ntest loss - {SHUFFLE} test loss")
+    # FIXME: Using old name smoothed rather than truncated until code finishes running.
+    metrics = Trainer.load_metrics(run, model_name, save_file = f"{FIELD_short}_smoothed_accuracy_run_{run}.npy")
+    if metrics[0] is None:
+      print(f"truncated metrics for {model_name} not found")
+      continue
 
-  for ax in axes: ax.legend()
+    trunc_train_acc[run,:Emin+1], trunc_train_loss[run,:Emin+1], _, _, trunc_test_acc[run,:Emin+1], trunc_test_loss[run,:Emin+1] = [
+      m[:Emin+1]
+      for m in metrics
+    ]
+    
+
+  
+  plot_one = lambda ax, Y, label: ax.errorbar(np.arange(E0, Emin+1), np.mean(Y[:,E0:], axis=0),
+    yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=r'$\Delta$ ' + label)
+
+  plot_one(axes[0], train_acc           - trunc_train_acc, "train error")
+  plot_one(axes[0], test_acc            - trunc_test_acc , "test error")
+  plot_one(axes[1], trunc_train_loss - train_loss        , "train loss")
+  plot_one(axes[1], trunc_test_loss  - test_loss         , "test loss")
+
+
+  common_title = f"{search_param} = {2**scale} trained layer(s): {layer}"
+  axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntrain error - truncated train error")
+  axes[1].set(xlabel="epochs", ylabel=r"$\Delta$ loss",  title=f"{common_title}\ntruncated train loss - train loss")
+
+
+  axes[0].set(ylim=(-0.0075, ylims[0]))
+  axes[1].set(ylim=(-0.02, ylims[1]))
+  for ax in axes:
+    ax.legend()
+    ax.axhline(0, color="gray", zorder=-1)
 
