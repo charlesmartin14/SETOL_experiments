@@ -23,7 +23,7 @@ def set_styles():
   plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 
-def plot_loss(DS, layer, search_param, scale, runs, trained_layers, WW_metric, LOSS = True):
+def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS = True):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   runs = [
@@ -32,16 +32,16 @@ def plot_loss(DS, layer, search_param, scale, runs, trained_layers, WW_metric, L
   ]
   if not runs: return
 
-  L = len(trained_layers)
-  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(trained_layers)))
+  L = len(plot_layers)
+  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(plot_layers)))
   set_styles()
 
   SKIP = 2
-  if len(trained_layers) == 1: axes = [axes]
+  if len(plot_layers) == 1: axes = [axes]
   plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
                     wspace=0.4,
                     hspace=0.5)
-  for ax_row, layer in zip(axes, trained_layers):
+  for ax_row, layer in zip(axes, plot_layers):
     for ax, TRAIN in zip(ax_row, [True, False]):
       y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
       for run in runs:
@@ -118,6 +118,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
 
 def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+
 
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
   set_styles()
