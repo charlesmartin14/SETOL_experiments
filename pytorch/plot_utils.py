@@ -194,6 +194,7 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
   plot_one = lambda ax, Y, label: ax.errorbar(np.arange(E0, Emin+1), np.mean(Y[:,E0:], axis=0),
     yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=r'$\Delta$ ' + label)
 
+  # Error = 1 - accuracy
   plot_one(axes[0], train_acc        - trunc_train_acc, "train error")
   plot_one(axes[0], test_acc         - trunc_test_acc , "test error")
   plot_one(axes[1], trunc_train_loss - train_loss     , "train loss")
@@ -201,7 +202,7 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
 
 
   common_title = f"{search_param} = {2**scale} trained layer(s): {layer}"
-  axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntrain error - truncated train error")
+  axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntruncated train error - train error")
   axes[1].set(xlabel="epochs", ylabel=r"$\Delta$ loss",  title=f"{common_title}\ntruncated train loss - train loss")
 
 
