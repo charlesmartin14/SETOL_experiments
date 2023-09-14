@@ -83,7 +83,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
 
   def populate_te(ax, scale, X, xerr):
     ax.errorbar(X, 1 - test_acc[scale], xerr=xerr, yerr=test_acc_SD[scale], fmt='^',
-                color=green_colors[scale], label=f"train error {search_param} = {2**scale}")
+                color=green_colors[scale], label=f"test error {search_param} = {2**scale}")
 
 
   layer_names = ["FC1", "FC2"]
