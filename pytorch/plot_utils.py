@@ -119,8 +119,12 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
 
 
 def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
+  """ Plots a particular WW metric, such as "alpha", over the epochs of a series of training runs. Each trained layer is shown in a separate column
+      DS, layer, search_param, scale: Fields that identify which experiment was done.
+      WW_metric: A WeightWatcher metric to be plotted. 
+      layers: A list of indices of layers for which WW_metric should be plotted. Valid indices are {0, 1}
+  """
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
-
 
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
   set_styles()
