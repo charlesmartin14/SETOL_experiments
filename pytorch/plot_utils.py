@@ -138,10 +138,99 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
       metric_data = np.zeros((E,))
       for e in range(E):
         metric_data[e] = details.query(f'epoch == {e+1}').loc[l, WW_metric]
-      ax.plot(metric_data, '+', label = f"seed = {run}")
+      ax.plot(metric_data, '+', label = f"seed = {run+1}")
+
   for l, ax in zip(layers, axes):
     ax.set(title=f"{model_name}\nlayer FC{l+1}", xlabel="epoch", ylabel=WW_metric)
     ax.legend()
+
+
+
+def populate_metrics_all_epochs(DS, layer, search_param, scale, runs, TRUNC_field=None):
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+
+  Emin = min(last_epoch(run, f"SETOL/{DS}/{layer}/{search_param}_{2**scale}") for run in runs)
+  train_acc        = np.zeros((len(runs), Emin+1))
+  train_loss       = np.zeros((len(runs), Emin+1))
+  test_acc         = np.zeros((len(runs), Emin+1))
+  test_loss        = np.zeros((len(runs), Emin+1))
+
+
+  save_file=None
+  for run in runs:
+    if TRUNC_field is not None:
+      # FIXME: Using old name smoothed rather than truncated until code finishes running.
+      save_file = f"{TRUNC_field}_smoothed_accuracy_run_{run}.npy"
+    metrics = Trainer.load_metrics(run, model_name, save_file=save_file)
+    if metrics[0] is None:
+      print(f"metrics for {model_name} {save_file} not found")
+      continue
+
+    train_acc[run,:Emin+1], train_loss[run,:Emin+1], _, _, test_acc[run,:Emin+1], test_loss[run,:Emin+1] = [
+      m[:Emin+1]
+      for m in metrics
+    ]
+
+  return train_acc, train_loss, test_acc, test_loss
+
+
+def populate_metrics_last_E(DS, layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
+  train_acc   = np.zeros((len(scales), len(runs)))
+  train_loss  = np.zeros((len(scales), len(runs)))
+  test_acc    = np.zeros((len(scales), len(runs)))
+  test_loss   = np.zeros((len(scales), len(runs)))
+
+  save_file = None
+  for scale_i, scale in enumerate(scales):
+    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    for run_i, run in enumerate(runs):
+      if TRUNC_field is not None:
+        # FIXME: Using old name smoothed rather than truncated until code finishes running.
+        save_file = f"{TRUNC_field}_smoothed_accuracy_run_{run}.npy"
+
+      E = last_epoch(run, model_name)
+      ind = (scale_i, run_i)
+
+      metrics = Trainer.load_metrics(run, model_name, save_file=save_file)
+      if metrics[0] is None: continue
+      train_acc[ind], train_loss[ind], _, _, test_acc[ind], test_loss[ind] = [m[E] for m in metrics]
+
+  if FLAT:
+    train_acc  = train_acc.reshape((-1))
+    train_loss = train_loss.reshape((-1))
+    test_acc   = test_acc.reshape((-1))
+    test_loss  = test_loss.reshape((-1))
+
+  return train_acc, train_loss, test_acc, test_loss
+
+
+
+def populate_WW_metric_all_epochs(DS, layer, search_param, scale, runs, Emin, WW_metric):
+  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+
+  WW_data = np.zeros((len(runs), Emin+1, 2))
+
+  for run_i, run in enumerate(runs):
+    details = Trainer.load_details(run, model_name)
+    for epoch in range(1, Emin+1):
+      WW_data[run_i, epoch, :] = details.query(f"epoch == {epoch}").loc[:, WW_metric]
+  
+  return WW_data
+
+
+
+def populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metric):
+  WW_data = np.zeros((len(scales), len(runs), 2))
+
+  for scale_i, scale in enumerate(scales):
+    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    for run_i, run in enumerate(runs):
+      E = last_epoch(run, model_name)
+
+      WW_data[scale_i, run_i, :] = Trainer.load_details(
+        run, model_name).query(f"epoch == {E}").loc[:, WW_metric]
+  
+  return WW_data
 
 
 
@@ -150,7 +239,7 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
     ylims=None,     # Maximum values to set for each plot so they can be compared
     E0=4  # Skip the first few epochs so that the variance is contained.
   ):
-  fig, axes = plt.subplots(ncols = 2, nrows = 1, figsize=(13, 4))
+  fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 4))
   set_styles()
 
   if ylims is None: ylims = (None, None)
@@ -158,47 +247,19 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
   FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
   FIELD_short = ['detX', 'xmin'][XMIN]
 
-  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
-  Emin = min(last_epoch(run, model_name) for run in runs)
+  train_acc, train_loss, test_acc, test_loss = populate_metrics_all_epochs(
+    DS, layer, search_param, scale, runs, TRUNC_field=None)
 
-  train_acc        = np.zeros((len(runs), Emin+1))
-  train_loss       = np.zeros((len(runs), Emin+1))
-  test_acc         = np.zeros((len(runs), Emin+1))
-  test_loss        = np.zeros((len(runs), Emin+1))
-
-  trunc_train_acc  = np.zeros((len(runs), Emin+1))
-  trunc_train_loss = np.zeros((len(runs), Emin+1))
-  trunc_test_acc   = np.zeros((len(runs), Emin+1))
-  trunc_test_loss  = np.zeros((len(runs), Emin+1))
-
-
-  for run in runs:
-    metrics = Trainer.load_metrics(run, model_name)
-    if metrics[0] is None:
-      print(f"metrics for {model_name} not found")
-      continue
-
-    train_acc[run,:Emin+1], train_loss[run,:Emin+1], _, _, test_acc[run,:Emin+1], test_loss[run,:Emin+1] = [
-      m[:Emin+1]
-      for m in metrics
-    ]
-
-
-    # FIXME: Using old name smoothed rather than truncated until code finishes running.
-    metrics = Trainer.load_metrics(run, model_name, save_file = f"{FIELD_short}_smoothed_accuracy_run_{run}.npy")
-    if metrics[0] is None:
-      print(f"truncated metrics for {model_name} not found")
-      continue
-
-    trunc_train_acc[run,:Emin+1], trunc_train_loss[run,:Emin+1], _, _, trunc_test_acc[run,:Emin+1], trunc_test_loss[run,:Emin+1] = [
-      m[:Emin+1]
-      for m in metrics
-    ]
-    
-
+  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_all_epochs(
+    DS, layer, search_param, scale, runs, TRUNC_field=FIELD_short)
   
-  plot_one = lambda ax, Y, label: ax.errorbar(np.arange(E0, Emin+1), np.mean(Y[:,E0:], axis=0),
-    yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=r'$\Delta$ ' + label)
+  Emin = train_acc.shape[1]-1
+
+  alpha = populate_WW_metric_all_epochs(DS, layer, search_param, scale, runs, Emin, "alpha")
+
+  X = np.arange(E0, Emin+1)
+  plot_one = lambda ax, Y, label, color=None: ax.errorbar(X, np.mean(Y[:,E0:], axis=0),
+    yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=r'$\Delta$ ' + label, color=color)
 
   # Error = 1 - accuracy
   plot_one(axes[0], train_acc        - trunc_train_acc, "train error")
@@ -206,15 +267,101 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
   plot_one(axes[1], trunc_train_loss - train_loss     , "train loss")
   plot_one(axes[1], trunc_test_loss  - test_loss      , "test loss")
 
+  if layer in ("all", "FC1", "FC1_WHITENED"): plot_one(axes[2], alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
+  if layer in ("all", "FC2", "FC2_WHITENED"): plot_one(axes[2], alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
+
 
   common_title = f"{search_param} = {2**scale} trained layer(s): {layer}"
   axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntruncated train error - train error")
   axes[1].set(xlabel="epochs", ylabel=r"$\Delta$ loss",  title=f"{common_title}\ntruncated train loss - train loss")
+  axes[2].set(xlabel="epochs", ylabel=r"$\alpha$",       title=f"{common_title}\n" + r"$\alpha$ for trained layers")
 
+  axes[2].axhline(2, color="gray", zorder=-1)
 
   axes[0].set(ylim=(-0.0075, ylims[0]))
   axes[1].set(ylim=(-0.02, ylims[1]))
+  axes[2].set(ylim=(1, None))
   for ax in axes:
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
+
+def plot_truncated_errors_by_scales(DS, layer, search_param, scales, runs,
+    XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
+  ):
+  FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
+  FIELD_short = ['detX', 'xmin'][XMIN]
+
+  fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 2))
+  set_styles()
+
+  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
+    DS, layer, search_param, scales, runs, TRUNC_field=None)
+  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
+    DS, layer, search_param, scales, runs, TRUNC_field=FIELD_short)
+
+
+  alpha = np.zeros((len(scales), len(runs), 2))
+  for scale in scales:
+    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    for i, run in enumerate(runs):
+      E = last_epoch(run, model_name)
+      details = Trainer.load_details(run, model_name).query(f"epoch == {E}")
+      alpha[scale, i,:] = details.loc[:, "alpha"]
+    
+  X = [2**s for s in scales]
+  plot_one = lambda ax, Y, label: ax.plot(X, Y, '-', label = r"$\Delta$" + label)
+
+  # Error = 1 - accuracy
+  plot_one(axes[0], train_acc - trunc_train_acc, f"train error")
+  plot_one(axes[0], test_acc  - trunc_test_acc,  f"test error")
+  
+  plot_one(axes[1], trunc_train_loss - train_loss, f"train loss")
+  plot_one(axes[1], trunc_test_loss  - test_loss,  f"test loss")
+
+  if layer in ("all", "FC1", "FC1_WHITENED"): axes[2].plot(X, alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
+  if layer in ("all", "FC2", "FC2_WHITENED"): axes[2].plot(X, alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
+  
+
+  common_title = f"{search_param} search trained layer(s): {layer} at final epoch"
+  axes[0].set(xlabel = f"{search_param} factor", ylabel = r"$\Delta$ error", title=f"{common_title}\ntruncated error - train error")
+  axes[1].set(xlabel = f"{search_param} factor", ylabel = r"$\Delta$ loss",  title=f"{common_title}\ntruncated loss - train loss")
+  axes[2].set(xlabel = f"{search_param} factor", ylabel = r"$\alpha$",  title=f"{common_title}\n" + r"$\alpha$ by layer")
+
+  axes[2].set(ylim=(1.4, 2.3))
+  
+  for ax in axes: ax.legend()
+
+
+def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
+    layers,
+    WW_metric,      # WW_metric to plot
+    XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
+  ):
+  FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
+  FIELD_short = ['detX', 'xmin'][XMIN]
+
+  L = len(layers)
+  fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(6*L + 1*(L-1), 4))
+  set_styles()
+  if L == 1: axes = [axes]
+
+  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
+    DS, layer, search_param, scales, runs, TRUNC_field=None, FLAT=True)
+  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
+    DS, layer, search_param, scales, runs, TRUNC_field=FIELD_short, FLAT=True)
+
+  WW_data = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metric).reshape((-1, 2))
+
+  WW_data = WW_data
+  for l, ax in zip(layers, axes):
+    common_title = f"{search_param} search trained layer(s): {layer} at last epoch"
+    layer_name = ["FC1", "FC2"][l]
+
+    ax.plot(WW_data[:, l], train_acc - trunc_train_acc, '+', label="truncated train error - train error")
+    ax.plot(WW_data[:, l],  test_acc -  trunc_test_acc, '+', label="truncated test error - test error")
+    ax.plot(WW_data[:, l], train_acc -        test_acc, '+', label="train error - test error")
+
+    ax.set(xlabel = WW_metric, ylabel=r"$\Delta$ error", title=f"{common_title}\ntrained layer {layer_name}")
+    ax.legend()
+    ax.axhline(0, color="gray", zorder=-1)
