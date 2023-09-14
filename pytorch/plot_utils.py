@@ -23,7 +23,7 @@ def set_styles():
   plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 
-def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS = True):
+def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS = True, ylim=None):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   runs = [
@@ -59,8 +59,10 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
           if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
           else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
       ax.legend()
+
+      if ylim is None: ylim = (0, None)
       ax.set(title=f"{model_name}\n{y_ax_name} vs. {WW_metric} for layer {layer}",
-           ylabel=y_ax_name, xlabel=WW_metric, ylim=(0, None))
+           ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
 
 
 
