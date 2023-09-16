@@ -277,7 +277,8 @@ def populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metr
 def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
     ylims=None,     # Maximum values to set for each plot so they can be compared
-    E0=4  # Skip the first few epochs so that the variance is contained.
+    E0=4, # Skip the first few epochs so that the variance is contained.
+    save_dir=None,  # place to save the images
   ):
   fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 4))
   set_styles()
@@ -325,9 +326,15 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
+  if save_dir is not None:
+    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
+    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_dir / f"mlp3_trunc_error_by_epochs_{search_param}_{scale}_{layer}_{FIELD_short}.png", bbox_inches='tight')
 
-def plot_truncated_errors_by_scales(DS, layer, search_param, scales, runs,
+
+def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
+    save_dir = None,
   ):
   FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
   FIELD_short = ['detX', 'xmin'][XMIN]
@@ -336,18 +343,17 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, runs,
   set_styles()
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, runs, TRUNC_field=None)
+    DS, layer, search_param, scales, [run], TRUNC_field=None)
   trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, runs, TRUNC_field=FIELD_short)
+    DS, layer, search_param, scales, [run], TRUNC_field=FIELD_short)
 
 
-  alpha = np.zeros((len(scales), len(runs), 2))
+  alpha = np.zeros((len(scales), 2))
   for scale in scales:
     model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
-    for i, run in enumerate(runs):
-      E = last_epoch(run, model_name)
-      details = Trainer.load_details(run, model_name).query(f"epoch == {E}")
-      alpha[scale, i,:] = details.loc[:, "alpha"]
+    E = last_epoch(run, model_name)
+    details = Trainer.load_details(run, model_name).query(f"epoch == {E}")
+    alpha[scale,:] = details.loc[:, "alpha"]
     
   X = [2**s for s in scales]
   plot_one = lambda ax, Y, label: ax.plot(X, Y, '-', label = r"$\Delta$" + label)
@@ -359,8 +365,8 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, runs,
   plot_one(axes[1], trunc_train_loss - train_loss, f"train loss")
   plot_one(axes[1], trunc_test_loss  - test_loss,  f"test loss")
 
-  if layer in ("all", "FC1", "FC1_WHITENED"): axes[2].plot(X, alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
-  if layer in ("all", "FC2", "FC2_WHITENED"): axes[2].plot(X, alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
+  if layer in ("all", "FC1", "FC1_WHITENED"): axes[2].plot(X, alpha[:,0], label=r"FC1 $\alpha$", color="red")
+  if layer in ("all", "FC2", "FC2_WHITENED"): axes[2].plot(X, alpha[:,1], label=r"FC2 $\alpha$", color="green")
   
 
   common_title = f"{search_param} search trained layer(s): {layer} at final epoch"
@@ -372,11 +378,18 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, runs,
   
   for ax in axes: ax.legend()
 
+  if save_dir is not None:
+    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
+    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_dir / f"mlp3_trunc_error_by_{search_param}_run_{run}_{layer}_{FIELD_short}.png", bbox_inches='tight')
+
+
 
 def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
     layers,
     WW_metric,      # WW_metric to plot
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
+    save_dir = None,
   ):
   FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
   FIELD_short = ['detX', 'xmin'][XMIN]
@@ -405,3 +418,8 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
     ax.set(xlabel = WW_metric, ylabel=r"$\Delta$ error", title=f"{common_title}\ntrained layer {layer_name}")
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
+
+  if save_dir is not None:
+    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
+    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_dir / f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{layer}_{FIELD_short}.png", bbox_inches='tight')
