@@ -69,6 +69,9 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
 def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_param="BS"):
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
+  red_colors = plt.cm.Reds(np.linspace(0.5, 1, len(scales)))
+  if search_param == "BS": blue_colors[ 0] = green_colors[ 0] = red_colors[0]
+  if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
   set_styles()
