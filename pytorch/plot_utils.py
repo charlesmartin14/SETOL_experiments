@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -66,7 +68,11 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
 
 
 
-def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_param="BS"):
+def plot_by_scales(DS, layer, scales, runs, WW_metrics,
+  plot_layer = 0,
+  search_param="BS",
+  save_dir = None,
+):
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
   red_colors = plt.cm.Reds(np.linspace(0.5, 1, len(scales)))
@@ -121,8 +127,8 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
   axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long, ylabel="error")
 
   plot_legends(axes[0], tr_labels, te_labels)
-
   # Now fill the remaining plots with the desired WW_metrics.
+  layer_name = layer_names[plot_layer]
   for ax, WW_metric in zip(axes[1:], WW_metrics):
     tr_labels = [
       populate_tr( ax, scale,
@@ -137,13 +143,19 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
       for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs)
     ]
 
-    ax.set(title=f"MLP3: {WW_metric} for {layer_names[plot_layer]} vs. train/test error\nVarious {search_param_long} considered",
+    ax.set(title=f"MLP3: {WW_metric} for {layer_name} vs. train/test error\nVarious {search_param_long} considered",
       xlabel= WW_metric, ylabel="error")
 
     plot_legends(ax, tr_labels, te_labels)
 
-  plt.tight_layout(rect=[0, 0, 0.6, 1.3]) 
+  plt.tight_layout(rect=[0, 0, 0.6, 1.4]) 
   plt.subplots_adjust(wspace=0.80, hspace=0.95)
+  
+  if save_dir is not None:
+    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
+    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_dir / f"mlp3_quality_by_{search_param}_{layer}_{layer_name}.png", bbox_inches='tight')
+
 
 
 def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
