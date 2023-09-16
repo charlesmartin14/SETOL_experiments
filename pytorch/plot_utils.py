@@ -70,7 +70,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
   blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
   green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
 
-  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)), 4))
+  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
   set_styles()
 
   means, stdevs = metric_error_bars(DS, layer, scales, runs, search_param=search_param)
@@ -105,8 +105,8 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
-    tr_legend = ax.legend(handles=ax.containers[:S], labels=tr_labels, loc="center left", bbox_to_anchor=(1.05, 0.25))
-    te_legend = ax.legend(handles=ax.containers[S:], labels=te_labels, loc="center left", bbox_to_anchor=(1.05, 0.75))
+    tr_legend = ax.legend(handles=ax.containers[:S], labels=tr_labels, loc="center left", bbox_to_anchor=(1.0, 0.25))
+    te_legend = ax.legend(handles=ax.containers[S:], labels=te_labels, loc="center left", bbox_to_anchor=(1.0, 0.75))
 
     tr_legend.set_title("Train set errors")
     tr_legend.get_title().set_fontsize(11)
@@ -139,6 +139,8 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
 
     plot_legends(ax, tr_labels, te_labels)
 
+  plt.tight_layout(rect=[0, 0, 0.6, 1.3]) 
+  plt.subplots_adjust(wspace=0.80, hspace=0.95)
 
 
 def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
