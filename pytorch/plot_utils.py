@@ -94,15 +94,6 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
     )
     return f"{search_param} = {2**scale}"
 
-  layer_names = ["FC1", "FC2"]
-  search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
-
-  # For the first one just plot BS / LR directly.
-  tr_labels = [ populate_tr(axes[0], scale, 2**scale, 0) for scale in scales ]
-  te_labels = [ populate_te(axes[0], scale, 2**scale, 0) for scale in scales ]
-
-  axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long, ylabel="error")
-
   S = len(scales)
   def plot_legends(ax, tr_labels, te_labels):
     box = ax.get_position()
@@ -120,6 +111,15 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
     ax.add_artist(tr_legend)
     ax.add_artist(te_legend)
   
+
+  layer_names = ["FC1", "FC2"]
+  search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
+
+  # For the first one just plot BS / LR directly.
+  tr_labels = [ populate_tr(axes[0], scale, 2**scale, 0) for scale in scales ]
+  te_labels = [ populate_te(axes[0], scale, 2**scale, 0) for scale in scales ]
+  axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long, ylabel="error")
+
   plot_legends(axes[0], tr_labels, te_labels)
 
   # Now fill the remaining plots with the desired WW_metrics.
