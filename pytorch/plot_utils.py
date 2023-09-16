@@ -80,42 +80,66 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
   mean_DFs, stdev_DFs = DF_error_bars(DS, layer, scales, runs, WW_metrics, search_param=search_param)
 
   def populate_tr(ax, scale, X, xerr):
-    ax.errorbar(X, 1 - train_acc[scale], xerr=xerr, yerr=train_acc_SD[scale], fmt='.',
-                color=blue_colors[scale], label=f"train error {search_param} = {2**scale}")
+    ax.errorbar(
+      X, 1 - train_acc[scale], xerr=xerr, yerr=train_acc_SD[scale], fmt='.', color=blue_colors[scale]
+    )
+    return f"{search_param} = {2**scale}"
 
   def populate_te(ax, scale, X, xerr):
-    ax.errorbar(X, 1 - test_acc[scale], xerr=xerr, yerr=test_acc_SD[scale], fmt='^',
-                color=green_colors[scale], label=f"test error {search_param} = {2**scale}")
-
+    ax.errorbar(
+      X, 1 - test_acc[scale], xerr=xerr, yerr=test_acc_SD[scale], fmt='^', color=green_colors[scale]
+    )
+    return f"{search_param} = {2**scale}"
 
   layer_names = ["FC1", "FC2"]
-  search_param_long = { "BS": "batch sizes", "LR": "learning rates"}[search_param]
+  search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
 
   # For the first one just plot BS / LR directly.
-  for scale in scales: populate_tr(axes[0], scale, X = 2**scale, xerr = 0)
-  for scale in scales: populate_te(axes[0], scale, X = 2**scale, xerr = 0)
+  tr_labels = [ populate_tr(axes[0], scale, 2**scale, 0) for scale in scales ]
+  te_labels = [ populate_te(axes[0], scale, 2**scale, 0) for scale in scales ]
+
 
   box = axes[0].get_position()
   axes[0].set_position([box.x0, box.y0, box.width * 0.6, box.height])
   axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long)
-  axes[0].legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+
+  S = len(scales)
+  def plot_legends(ax, tr_labels, te_labels):
+    tr_legend = ax.legend(handles=ax.containers[:S], labels=tr_labels, loc="center left", bbox_to_anchor=(1.05, 0.25))
+    te_legend = ax.legend(handles=ax.containers[S:], labels=te_labels, loc="center left", bbox_to_anchor=(1.05, 0.75))
+
+    tr_legend.set_title("Train set errors")
+    tr_legend.get_title().set_fontsize(11)
+
+    te_legend.set_title("Test set errors ")
+    te_legend.get_title().set_fontsize(11)
+
+    ax.add_artist(tr_legend)
+    ax.add_artist(te_legend)
+  
+  plot_legends(axes[0], tr_labels, te_labels)
 
   # Now fill the remaining plots with the desired WW_metrics.
   for ax, WW_metric in zip(axes[1:], WW_metrics):
-    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
+    tr_labels = [
       populate_tr( ax, scale,
         X     = mean_details.loc[plot_layer, WW_metric],
         xerr  = stdev_details.loc[plot_layer, WW_metric])
-    for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs):
+        for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs)
+    ]
+    te_labels = [
       populate_te( ax, scale,
         X = mean_details.loc[plot_layer, WW_metric],
         xerr = stdev_details.loc[plot_layer, WW_metric])
+      for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs)
+    ]
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
-
     ax.set(title=f"MLP3: {WW_metric} for {layer_names[plot_layer]} vs. train/test error\nVarious {search_param_long} considered", xlabel= WW_metric)
-    ax.legend(loc="center left", bbox_to_anchor=(1.1, 0.5))
+
+    plot_legends(ax, tr_labels, te_labels)
+
 
 
 def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
