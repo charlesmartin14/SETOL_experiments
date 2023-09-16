@@ -98,13 +98,13 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
   tr_labels = [ populate_tr(axes[0], scale, 2**scale, 0) for scale in scales ]
   te_labels = [ populate_te(axes[0], scale, 2**scale, 0) for scale in scales ]
 
-
-  box = axes[0].get_position()
-  axes[0].set_position([box.x0, box.y0, box.width * 0.6, box.height])
   axes[0].set(title=f"MLP3: {search_param_long} vs. train/test error", xlabel=search_param_long, ylabel="error")
 
   S = len(scales)
   def plot_legends(ax, tr_labels, te_labels):
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
+
     tr_legend = ax.legend(handles=ax.containers[:S], labels=tr_labels, loc="center left", bbox_to_anchor=(1.05, 0.25))
     te_legend = ax.legend(handles=ax.containers[S:], labels=te_labels, loc="center left", bbox_to_anchor=(1.05, 0.75))
 
@@ -133,8 +133,6 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics, plot_layer = 0, search_p
         xerr = stdev_details.loc[plot_layer, WW_metric])
       for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs)
     ]
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.6, box.height])
 
     ax.set(title=f"MLP3: {WW_metric} for {layer_names[plot_layer]} vs. train/test error\nVarious {search_param_long} considered",
       xlabel= WW_metric, ylabel="error")
