@@ -23,7 +23,7 @@ class BaseModel(torch.nn.Module):
 class MLP3(BaseModel):
     # 2 hidden layers, not counting the output layer.
     def __init__(self, widths = (300, 100),
-                 H=32, W=32, C=3,
+                 H=28, W=28, C=1,
                  categories=10):
         assert len(widths) == 2, widths
         super(MLP3, self).__init__(H, W, C, categories)
