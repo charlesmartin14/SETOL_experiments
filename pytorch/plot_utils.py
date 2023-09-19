@@ -11,18 +11,20 @@ from utils import last_epoch
 
 from utils import metric_error_bars, DF_error_bars
 
-def set_styles():
-  SMALL_SIZE = 10
-  MEDIUM_SIZE = 16
-  LARGE_SIZE = 30
 
-  plt.rc('font', size=LARGE_SIZE)  # controls default text sizes
-  plt.rc('axes', titlesize=MEDIUM_SIZE)  # fontsize of the axes title
-  plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-  plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-  plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-  plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
-  plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
+# Set standard constants
+SMALL_SIZE = 10
+MEDIUM_SIZE = 16
+LARGE_SIZE = 30
+
+plt.rc('font', size=LARGE_SIZE)  # controls default text sizes
+plt.rc('axes', titlesize=MEDIUM_SIZE)  # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
+
 
 
 def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS = True, ylim=None):
@@ -36,7 +38,6 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
 
   L = len(plot_layers)
   fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(plot_layers)))
-  set_styles()
 
   SKIP = 2
   if len(plot_layers) == 1: axes = [axes]
@@ -80,7 +81,6 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
   if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
-  set_styles()
 
   means, stdevs = metric_error_bars(DS, layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
@@ -167,7 +167,6 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
-  set_styles()
 
   if len(layers) == 1: axes = [axes]
 
@@ -340,7 +339,6 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
   FIELD_short = ['detX', 'xmin'][XMIN]
 
   fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 2))
-  set_styles()
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
     DS, layer, search_param, scales, [run], TRUNC_field=None)
@@ -396,7 +394,6 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
 
   L = len(layers)
   fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(6*L + 1*(L-1), 4))
-  set_styles()
   if L == 1: axes = [axes]
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
