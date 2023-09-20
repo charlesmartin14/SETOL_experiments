@@ -73,7 +73,9 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
         model_name = f"SETOL/{DS}/{layer}/BS_{BS}"
 
       for run in range(RUNS):
-        if Trainer.metrics_path(run, model_name).exists(): continue
+        if Trainer.metrics_path(run, model_name).exists():
+          print(f"Found path {Trainer.metrics_path(run, model_name)}")
+          continue
         print(model_name, run)
         
         starting_epoch = 0
