@@ -421,3 +421,31 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
     if not isinstance(save_dir, Path): save_dir = Path(save_dir)
     if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_dir / f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{layer}_{FIELD_short}.png", bbox_inches='tight')
+
+
+def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
+    layers,
+    WW_metrics,     # WW_metrics to plot
+    save_dir = None,
+  ):
+  assert len(WW_metrics) == 2, len(WW_metrics)
+  assert len(layers) <= 2, len(layers)
+
+  metric_data1 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[0]) #.reshape((-1, 2))
+  metric_data2 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[1]) #.reshape((-1, 2))
+
+  L = len(layers)
+  fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(7*L-1, 4))
+  if L == 1: axes = [axes]
+
+  layer_names = ["FC1", "FC2"]
+  search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
+  common_title = f"MLP3: {WW_metrics[0]} vs {WW_metrics[1]}\nVarious {search_param_long}s considered"
+  for l, ax in zip(layers, axes):
+    for scale_i, scale in enumerate(scales):
+      model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+      X = metric_data1[scale_i, :, l]
+      Y = metric_data2[scale_i, :, l]
+      ax.errorbar(np.mean(X), np.mean(Y), xerr=np.std(X, axis=0), yerr=np.std(Y, axis=0), fmt='-', label=f"{search_param}={2**scale}")
+    ax.set(xlabel=WW_metrics[0], ylabel=WW_metrics[1], title=f"{common_title}\nLayer {layer_names[l]}")
+    ax.legend()
