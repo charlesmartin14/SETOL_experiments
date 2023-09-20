@@ -13,7 +13,7 @@ from utils import metric_error_bars, DF_error_bars
 
 
 # Set standard constants
-SMALL_SIZE = 10
+SMALL_SIZE = 12
 MEDIUM_SIZE = 16
 LARGE_SIZE = 30
 
@@ -23,6 +23,7 @@ plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
 plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
 plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+plt.rc('legend', title_fontsize=MEDIUM_SIZE) # legend title fontsize
 plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 
@@ -143,7 +144,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
       for scale, mean_details, stdev_details in zip(scales, mean_DFs, stdev_DFs)
     ]
 
-    ax.set(title=f"MLP3: {WW_metric} for {layer_name} vs. train/test error\nVarious {search_param_long} considered",
+    ax.set(title=f"MLP3: {WW_metric} for {layer_name} vs. train/test error\nVarious {search_param_long}s considered",
       xlabel= WW_metric, ylabel="error")
 
     plot_legends(ax, tr_labels, te_labels)
