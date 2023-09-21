@@ -30,17 +30,7 @@ hyper_params = [
 ]
 
 
-def whiten(m, LR):
-  # Whiten the non-training layers, i.e. set all singular values to 1.
-  for c, lr in zip(m.children(), LR):
-    if lr == 0:
-      with torch.no_grad():
-        U, _, V = torch.linalg.svd(c.weight, full_matrices=False)
-        c.weight = torch.nn.Parameter( U @ V )
-        c.bias[:] = 1.
-
-
-def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=False):
+def main(DS, search_param, SCALES, RUNS, C=1, H=28, W=28, RESTART=False):
   assert search_param in ("BS", "LR"), search_param
 
   TRAIN = PILDataSet(True,  DS=DS)
@@ -59,10 +49,6 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
   
   t = Trainer(m)
   for layer, base_LR in hyper_params:
-    if WHITEN:
-      if layer == "all": continue
-      layer = f"{layer}_WHITENED"
-  
     for scale in range(SCALES):
       if search_param == "LR":
         BS = 32
@@ -88,8 +74,6 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
         loader.split_val(0.1)
 
         t.load(run, 0, "SETOL/TEST")  # Start with the same initial weights
-        if WHITEN:
-          whiten(m, LR)
 
         reset_random_seeds(seed_value=run+1)
         t.train_loop(model_name, run, 1000, loader, starting_epoch = starting_epoch,
@@ -105,8 +89,6 @@ if __name__ == "__main__":
   # NOTE: If you use this, then the non-determinism guarantees do not hold.
   RESTART = "RESTART" in sys.argv
 
-  WHITEN = "WHITEN" in sys.argv
-  
   RUNS = 5  # number of times to run with a different seed.
 
   SCALES = 6  # Number of different learning rates or batch sizes to examine
@@ -118,4 +100,4 @@ if __name__ == "__main__":
   search_param = "BS"
   if "LR" in sys.argv: search_param = "LR"
 
-  main(DS, search_param, SCALES, RUNS, WHITEN, C, H, W, RESTART)
+  main(DS, search_param, SCALES, RUNS, C, H, W, RESTART)
