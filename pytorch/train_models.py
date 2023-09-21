@@ -47,14 +47,16 @@ def main(DS, search_param, SCALES, RUNS, WHITEN=False, C=1, H=28, W=28, RESTART=
   TEST  = PILDataSet(False, DS=DS)
 
   # Ensure that a different initialization exists for each seed.
+  m = MLP3(widths=(300, 100), H=H, W=W, C=C)
   for run in range(RUNS):
     if not Trainer.save_dir(run, 0, "SETOL/TEST").exists():
+      loader = PreLoader(DS, TRAIN, TEST, batch_size=10000)
       reset_random_seeds(seed_value=run+1)
-      m = MLP3(widths=(300, 100), H=H, W=W, C=C)
+      for c in m.children(): torch.nn.init.xavier_normal_(c.weight)
       t = Trainer(m)
+      t.train_loop("SETOL/TEST", run, 1, loader)
       t.save(run, 0, "SETOL/TEST")
   
-  m = MLP3(widths=(300, 100), H=H, W=W, C=C)
   t = Trainer(m)
   for layer, base_LR in hyper_params:
     if WHITEN:
