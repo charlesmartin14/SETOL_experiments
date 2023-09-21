@@ -27,8 +27,18 @@ plt.rc('legend', title_fontsize=MEDIUM_SIZE) # legend title fontsize
 plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 
+def save_fig(save_dir, save_file, fig):
+  if save_dir is None: return
+  if not isinstance(save_dir, Path): save_dir = Path(save_dir)
+  if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
+  fig.savefig(save_dir / save_file, bbox_inches='tight')
 
-def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS = True, ylim=None):
+
+def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric,
+  LOSS = True,
+  ylim=None,
+  save_dir=None
+):
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
   runs = [
@@ -36,17 +46,26 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
     if Trainer.save_dir(run, 0, model_name).exists()
   ]
   if not runs: return
+  
+  layer_names = ["FC1", "FC2"]
+  trained_layers = {"all": "all layers trained", "FC1": "only FC1 trained", "FC2": "only FC2 trained"}
 
   L = len(plot_layers)
-  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(12, 4*len(plot_layers)))
+  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(14, 3*L))
+
+
+  common_title = f"MLP3: {search_param}={2**scale}; {trained_layers[layer]}"
 
   SKIP = 2
-  if len(plot_layers) == 1: axes = [axes]
+  if L == 1: axes = [axes]
   plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
                     wspace=0.4,
                     hspace=0.5)
-  for ax_row, layer in zip(axes, plot_layers):
+  for ax_row, l in zip(axes, plot_layers):
     for ax, TRAIN in zip(ax_row, [True, False]):
+      box = ax.get_position()
+      ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+
       y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
       for run in runs:
         train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
@@ -55,19 +74,21 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric, LOSS
         metric_vals = np.zeros(X.shape)
         details = Trainer.load_details(run, model_name)
         for e in X:
-          metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[layer, WW_metric]
+          metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[l, WW_metric]
         if LOSS:
           if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=f"seed={run+1}", alpha=0.5)
           else:     ax.plot(metric_vals, test_loss [X], '+', label=f"seed={run+1}", alpha=0.5)
         else:
           if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
           else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
-      ax.legend()
+      ax.legend(bbox_to_anchor=(1.45, 0.75))
 
       if ylim is None: ylim = (0, None)
-      ax.set(title=f"{model_name}\n{y_ax_name} vs. {WW_metric} for layer {layer}",
+      if ylim[0] is None: ylim = (0, ylim[1])
+      ax.set(title=f"{common_title}\n{y_ax_name} vs. {WW_metric} for layer {layer_names[l]}",
            ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
-
+  
+  save_fig(save_dir, f"mlp3_{'loss' if LOSS else 'error'}_by_{search_param}_{layer}.png", fig)
 
 
 def plot_by_scales(DS, layer, scales, runs, WW_metrics,
@@ -152,10 +173,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
   plt.tight_layout(rect=[0, 0, 0.6, 1.4]) 
   plt.subplots_adjust(wspace=0.80, hspace=0.95)
   
-  if save_dir is not None:
-    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
-    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_dir / f"mlp3_quality_by_{search_param}_{layer}_{layer_name}.png", bbox_inches='tight')
+  save_fig(save_dir, f"mlp3_quality_by_{search_param}_{layer}_{layer_name}.png", fig)
 
 
 
@@ -326,10 +344,7 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
-  if save_dir is not None:
-    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
-    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_dir / f"mlp3_trunc_error_by_epochs_{search_param}_{scale}_{layer}_{FIELD_short}.png", bbox_inches='tight')
+  save_fig(save_dir, f"mlp3_trunc_error_by_epochs_{search_param}_{scale}_{layer}_{FIELD_short}.png", fig)
 
 
 def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
@@ -377,10 +392,7 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
   
   for ax in axes: ax.legend()
 
-  if save_dir is not None:
-    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
-    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_dir / f"mlp3_trunc_error_by_{search_param}_run_{run}_{layer}_{FIELD_short}.png", bbox_inches='tight')
+  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_run_{run}_{layer}_{FIELD_short}.png", fig)
 
 
 
@@ -417,10 +429,7 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
-  if save_dir is not None:
-    if not isinstance(save_dir, Path): save_dir = Path(save_dir)
-    if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_dir / f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{layer}_{FIELD_short}.png", bbox_inches='tight')
+  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{layer}_{FIELD_short}.png", fig)
 
 
 def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
@@ -449,3 +458,5 @@ def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
       ax.errorbar(np.mean(X), np.mean(Y), xerr=np.std(X, axis=0), yerr=np.std(Y, axis=0), fmt='-', label=f"{search_param}={2**scale}")
     ax.set(xlabel=WW_metrics[0], ylabel=WW_metrics[1], title=f"{common_title}\nLayer {layer_names[l]}")
     ax.legend()
+
+  save_fig(save_dir, f"mlp3_{WW_metrics[0]}_by_{WW_metrics[1]}_{search_param}_{layer}.png", fig)
