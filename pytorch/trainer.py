@@ -112,7 +112,8 @@ class Trainer(object):
 
   @staticmethod
   def load_details(run, model_name):
-    return pd.read_pickle(Trainer.details_path(run, model_name))
+    details_path = Trainer.details_path(run, model_name)
+    return pd.read_pickle(details_path) if details_path.exists() else None
 
   @staticmethod
   def load_metrics(run, model_name, VERBOSE=False, save_file=None):
