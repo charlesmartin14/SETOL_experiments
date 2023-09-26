@@ -11,7 +11,7 @@ from pildataset import PILDataSet
 from utils import last_epoch
 
 
-def SVD_shuffle(c, xmin, SHUFFLE=True):
+def SVD_truncate(c, lambda_min):
   # Decompose
   WM = c.weight
   if torch.cuda.is_available():
@@ -22,37 +22,30 @@ def SVD_shuffle(c, xmin, SHUFFLE=True):
     U, S, V = np.linalg.svd(WM.cpu().numpy())
     U, V = map(lambda t: torch.nn.Parameter(torch.Tensor(t)), (U, V))
 
-  # Shuffle
-  if SHUFFLE:
-    to_shuffle = np.where(S < np.sqrt(xmin))[0]
-    S[to_shuffle] = S[to_shuffle[np.random.permutation(len(to_shuffle))]]
-
-  # or Truncate
-  else:
-   S[np.where(S < np.sqrt(xmin))[0]] = 0
+  # Truncate
+  S[np.where(S < np.sqrt(lambda_min))[0]] = 0
 
   # Recompose
   S = torch.Tensor(S).to(U.device)
   c.weight = torch.nn.Parameter(U @ torch.diag(S) @ V)
 
 
-def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=True, XMIN=True):
-  SHUFFLED = 'shuffled' if SHUFFLE else 'smoothed'
+def truncated_accuracy(model_name, t, loader, LR, runs, device="cuda", XMIN=True):
   FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
   FIELD_short = ['detX', 'xmin'][XMIN]
 
   for run in runs:
-    save_file = f"./saved_models/{model_name}/{FIELD_short}_{SHUFFLED}_accuracy_run_{run}.npy"
+    save_file = f"./saved_models/{model_name}/{FIELD_short}_truncated_accuracy_run_{run}.npy"
     if Path(save_file).exists(): return
 
-    print(f"{'shuffled' if SHUFFLE else 'truncated'} {FIELD_short} accuracy {model_name} run {run}")
+    print(f"truncated {FIELD_short} accuracy {model_name} run {run}")
     E = last_epoch(run, model_name)
-    shuffled_train_acc  = np.zeros(E+1)
-    shuffled_train_loss = np.zeros(E+1)
-    shuffled_val_acc    = np.zeros(E+1)
-    shuffled_val_loss   = np.zeros(E+1)
-    shuffled_test_acc   = np.zeros(E+1)
-    shuffled_test_loss  = np.zeros(E+1)
+    trunc_train_acc  = np.zeros(E+1)
+    trunc_train_loss = np.zeros(E+1)
+    trunc_val_acc    = np.zeros(E+1)
+    trunc_val_loss   = np.zeros(E+1)
+    trunc_test_acc   = np.zeros(E+1)
+    trunc_test_loss  = np.zeros(E+1)
 
     details = t.load_details(run, model_name)
     for e in range(1, E+1):
@@ -61,21 +54,21 @@ def shuffled_accuracy(model_name, t, loader, LR, runs, device="cuda", SHUFFLE=Tr
       for c, lr, layer_id in zip(t.model.children(), LR, range(len(t.model.children()))):
         if lr > 0:
           lambda_min = details.query(f"epoch == {e}").loc[layer_id, FIELD]
-          SVD_shuffle(c, lambda_min, SHUFFLE)
-      shuffled_train_acc[e], shuffled_train_loss[e] = t.evaluate(loader, "train")
-      shuffled_val_acc  [e], shuffled_val_loss  [e] = t.evaluate(loader, "val")
-      shuffled_test_acc [e], shuffled_test_loss [e] = t.evaluate(loader, "test")
+          SVD_truncate(c, lambda_min)
+      trunc_train_acc[e], trunc_train_loss[e] = t.evaluate(loader, "train")
+      trunc_val_acc  [e], trunc_val_loss  [e] = t.evaluate(loader, "val")
+      trunc_test_acc [e], trunc_test_loss [e] = t.evaluate(loader, "test")
       print('.', end="", flush=True)
       if e % 100 == 0: print()
     print()
 
     with open(save_file, "wb") as fp:
-      np.save(fp, shuffled_train_acc)
-      np.save(fp, shuffled_train_loss)
-      np.save(fp, shuffled_val_acc)
-      np.save(fp, shuffled_val_loss)
-      np.save(fp, shuffled_test_acc)
-      np.save(fp, shuffled_test_loss)
+      np.save(fp, trunc_train_acc)
+      np.save(fp, trunc_train_loss)
+      np.save(fp, trunc_val_acc)
+      np.save(fp, trunc_val_loss)
+      np.save(fp, trunc_test_acc)
+      np.save(fp, trunc_test_loss)
     print(f"saved to {save_file}")
 
 
@@ -97,10 +90,8 @@ def main(DS, RUNS, SCALES, search_param, C=1, H=28, W=28):
   for layer, LR in layer_data:
     for scale in range(SCALES):
       model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=True)
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True, XMIN=True)
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=False, XMIN=False)
-      shuffled_accuracy(model_name, t, loader, LR, range(RUNS), SHUFFLE=True, XMIN=False)
+      truncated_accuracy(model_name, t, loader, LR, range(RUNS), XMIN=True)
+      truncated_accuracy(model_name, t, loader, LR, range(RUNS), XMIN=False)
 
 
 if __name__ == "__main__":
