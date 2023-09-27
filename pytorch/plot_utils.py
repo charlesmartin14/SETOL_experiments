@@ -54,48 +54,46 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layer, WW_metric,
   ]
   if not runs: return
   
-  layer_names = ["FC1", "FC2"]
+  layer_name = ["FC1", "FC2"][plot_layer]
   trained_layers = {"all": "all layers trained", "FC1": "only FC1 trained", "FC2": "only FC2 trained"}
 
-  L = len(plot_layers)
-  fig, axes = plt.subplots(ncols=2, nrows=L, figsize=(14, 3*L))
+  fig, axes = plt.subplots(ncols=2, nrows=1, figsize=(14, 3))
 
 
   common_title = f"MLP3: {search_param}={2**scale}; {trained_layers[layer]}"
 
   SKIP = 2
-  if L == 1: axes = [axes]
   plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
                     wspace=0.4,
                     hspace=0.5)
-  for ax_row, l in zip(axes, plot_layers):
-    for ax, TRAIN in zip(ax_row, [True, False]):
-      box = ax.get_position()
-      ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+  for ax, TRAIN in zip(axes, [True, False]):
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
 
-      y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
-      for run in runs:
-        train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
-        X = np.arange(SKIP, last_epoch(run, model_name))
-  
-        metric_vals = np.zeros(X.shape)
-        details = Trainer.load_details(run, model_name)
-        for e in X:
-          metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[l, WW_metric]
-        if LOSS:
-          if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=f"seed={run+1}", alpha=0.5)
-          else:     ax.plot(metric_vals, test_loss [X], '+', label=f"seed={run+1}", alpha=0.5)
-        else:
-          if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
-          else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
-      ax.legend(bbox_to_anchor=(1.45, 0.75))
+    y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
+    for run in runs:
+      train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
+      X = np.arange(SKIP, last_epoch(run, model_name))
 
-      if ylim is None: ylim = (0, None)
-      if ylim[0] is None: ylim = (0, ylim[1])
-      ax.set(title=f"{common_title}\n{y_ax_name} vs. {WW_metric} for layer {layer_names[l]}",
-           ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
-  
-  save_fig(save_dir, f"mlp3_{'loss' if LOSS else 'error'}_by_{search_param}_{layer}.png", fig)
+      metric_vals = np.zeros(X.shape)
+      details = Trainer.load_details(run, model_name)
+      for e in X:
+        metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[plot_layer, WW_metric]
+      if LOSS:
+        if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=f"seed={run+1}", alpha=0.5)
+        else:     ax.plot(metric_vals, test_loss [X], '+', label=f"seed={run+1}", alpha=0.5)
+      else:
+        if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
+        else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
+    ax.legend(bbox_to_anchor=(1.45, 0.75))
+
+    if ylim is None: ylim = (0, None)
+    if ylim[0] is None: ylim = (0, ylim[1])
+    ax.set(title=f"{common_title}\n{y_ax_name} vs. {WW_metric} for layer {layer_name}",
+          ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
+    
+  LOSS = 'loss' if LOSS else 'error'
+  save_fig(save_dir, f"mlp3_{LOSS}_by_{search_param}={2**scale}_{layer}_{layer_name}.png", fig)
 
 
 def plot_by_scales(DS, layer, scales, runs, WW_metrics,
