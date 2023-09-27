@@ -178,7 +178,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
 
 
 
-def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
+def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, plot_layers):
   """ Plots a particular WW metric, such as "alpha", over the epochs of a series of training runs. Each trained layer is shown in a separate column
       DS, layer, search_param, scale: Fields that identify which experiment was done.
       WW_metric: A WeightWatcher metric to be plotted. 
@@ -186,20 +186,20 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, layers):
   """
   model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
 
-  fig, axes = plt.subplots(nrows=1, ncols=len(layers), figsize = (6*len(layers), 4))
+  fig, axes = plt.subplots(nrows=1, ncols=len(plot_layers), figsize = (6*len(plot_layers), 4))
 
-  if len(layers) == 1: axes = [axes]
+  if len(plot_layers) == 1: axes = [axes]
 
   for run in runs:
     details = Trainer.load_details(run, model_name)
     E = last_epoch(run, model_name)
-    for l, ax in zip(layers, axes):
+    for l, ax in zip(plot_layers, axes):
       metric_data = np.zeros((E,))
       for e in range(E):
         metric_data[e] = details.query(f'epoch == {e+1}').loc[l, WW_metric]
       ax.plot(metric_data, '+', label = f"seed = {run+1}")
 
-  for l, ax in zip(layers, axes):
+  for l, ax in zip(plot_layers, axes):
     ax.set(title=f"{model_name}\nlayer FC{l+1}", xlabel="epoch", ylabel=WW_metric)
     ax.legend()
 
@@ -397,7 +397,7 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
 
 
 def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
-    layers,
+    plot_layers,
     WW_metric,      # WW_metric to plot
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
     save_dir = None,
@@ -405,7 +405,7 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
   FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
   FIELD_short = ['detX', 'xmin'][XMIN]
 
-  L = len(layers)
+  L = len(plot_layers)
   fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(6*L + 1*(L-1), 4))
   if L == 1: axes = [axes]
 
@@ -417,7 +417,7 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
   WW_data = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metric).reshape((-1, 2))
 
   WW_data = WW_data
-  for l, ax in zip(layers, axes):
+  for l, ax in zip(plot_layers, axes):
     common_title = f"{search_param} search trained layer(s): {layer} at last epoch"
     layer_name = ["FC1", "FC2"][l]
 
@@ -433,24 +433,24 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
 
 
 def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
-    layers,
+    plot_layers,
     WW_metrics,     # WW_metrics to plot
     save_dir = None,
   ):
   assert len(WW_metrics) == 2, len(WW_metrics)
-  assert len(layers) <= 2, len(layers)
+  assert len(plot_layers) <= 2, len(plot_layers)
 
   metric_data1 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[0]) #.reshape((-1, 2))
   metric_data2 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[1]) #.reshape((-1, 2))
 
-  L = len(layers)
+  L = len(plot_layers)
   fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(7*L-1, 4))
   if L == 1: axes = [axes]
 
   layer_names = ["FC1", "FC2"]
   search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
   common_title = f"MLP3: {WW_metrics[0]} vs {WW_metrics[1]}\nVarious {search_param_long}s considered"
-  for l, ax in zip(layers, axes):
+  for l, ax in zip(plot_layers, axes):
     for scale_i, scale in enumerate(scales):
       model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
       X = metric_data1[scale_i, :, l]
