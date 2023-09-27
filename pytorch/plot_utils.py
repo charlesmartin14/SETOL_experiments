@@ -33,8 +33,15 @@ def save_fig(save_dir, save_file, fig):
   if not save_dir.exists(): save_dir.mkdir(parents=True, exist_ok=True)
   fig.savefig(save_dir / save_file, bbox_inches='tight')
 
+def make_colors(search_param, scales):
+  blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
+  green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
+  red_colors = plt.cm.Reds(np.linspace(0.5, 1, len(scales)))
+  if search_param == "BS": blue_colors[ 0] = green_colors[ 0] = red_colors[0]
+  if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
+  return red_colors, green_colors, blue_colors
 
-def plot_loss(DS, layer, search_param, scale, runs, plot_layers, WW_metric,
+def plot_loss(DS, layer, search_param, scale, runs, plot_layer, WW_metric,
   LOSS = True,
   ylim=None,
   save_dir=None
@@ -96,11 +103,7 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
   search_param="BS",
   save_dir = None,
 ):
-  blue_colors = plt.cm.Blues(np.linspace(0.5, 1, len(scales)))
-  green_colors = plt.cm.Greens(np.linspace(0.5, 1, len(scales)))
-  red_colors = plt.cm.Reds(np.linspace(0.5, 1, len(scales)))
-  if search_param == "BS": blue_colors[ 0] = green_colors[ 0] = red_colors[0]
-  if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
+  red_colors, green_colors, blue_colors = make_colors(search_param, scales)
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
 
@@ -460,3 +463,45 @@ def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
     ax.legend()
 
   save_fig(save_dir, f"mlp3_{WW_metrics[0]}_by_{WW_metrics[1]}_{search_param}_{layer}.png", fig)
+
+
+def plot_detX(DS, layer, search_param, scales, runs, plot_layers, save_dir = None,):
+  red_colors, green_colors, blue_colors = make_colors(search_param, scales)
+
+  alpha = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "alpha")
+  # xmin = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "xmin")
+  # detX = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "detX_val")
+
+  Dl = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "detX_delta")
+
+  L = len(plot_layers)
+  fig, axes = plt.subplots(ncols=L, nrows=1, figsize=(9*L - 2, 4))
+
+  layer_names = ["FC1", "FC2"]
+  search_param_long = { "BS": "batch size", "LR": "learning rate"}[search_param]
+
+  deltaL = r"$\Delta \lambda_{min}$"
+  common_title = f"MLP3: {deltaL} (PL fit) - (|detX|=1) \nVarious {search_param_long}s considered"
+
+  if L == 1: axes = [axes]
+
+
+  for l, ax in zip(plot_layers, axes):
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+
+    for scale in scales:
+      ax.plot(alpha[scale, :, l], Dl[scale, :, l], '.', color=blue_colors[scale], label=f"{search_param}={2**scale}")
+
+    ax.axvline(2, color="red", linewidth=0.5, zorder=-1)
+    ax.axhline(0, color="red", linewidth=0.5, zorder=-1)
+
+    ax.set(xlabel = r"PL $\alpha$", ylabel=r"$\Delta \lambda_{min}$",
+      xlim=(1.85, None), ylim=(min(-0.1, np.min(Dl[:,l] * 1.2)), None),
+      title=f"{common_title}\nlayer {layer_names[l]}")
+    ax.legend(bbox_to_anchor=(1.35, 0.75))
+
+  save_fig(save_dir, f"mlp3_detX_delta_{search_param}_{layer}.png", fig)
+
+
+
