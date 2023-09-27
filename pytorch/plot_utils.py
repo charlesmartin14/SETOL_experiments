@@ -41,12 +41,12 @@ def make_colors(search_param, scales):
   if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
   return red_colors, green_colors, blue_colors
 
-def plot_loss(DS, layer, search_param, scale, runs, plot_layer, WW_metric,
+def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metric,
   LOSS = True,
   ylim=None,
   save_dir=None
 ):
-  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
 
   runs = [
     run for run in runs
@@ -60,7 +60,7 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layer, WW_metric,
   fig, axes = plt.subplots(ncols=2, nrows=1, figsize=(14, 3))
 
 
-  common_title = f"MLP3: {search_param}={2**scale}; {trained_layers[layer]}"
+  common_title = f"MLP3: {search_param}={2**scale}; {trained_layers[trained_layer]}"
 
   SKIP = 2
   plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
@@ -93,10 +93,10 @@ def plot_loss(DS, layer, search_param, scale, runs, plot_layer, WW_metric,
           ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
     
   LOSS = 'loss' if LOSS else 'error'
-  save_fig(save_dir, f"mlp3_{LOSS}_by_{search_param}={2**scale}_{layer}_{layer_name}.png", fig)
+  save_fig(save_dir, f"mlp3_{LOSS}_by_{search_param}={2**scale}_{trained_layer}_{layer_name}.png", fig)
 
 
-def plot_by_scales(DS, layer, scales, runs, WW_metrics,
+def plot_by_scales(DS, trained_layer, scales, runs, WW_metrics,
   plot_layer = 0,
   search_param="BS",
   save_dir = None,
@@ -105,11 +105,11 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
 
   fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
 
-  means, stdevs = metric_error_bars(DS, layer, scales, runs, search_param=search_param)
+  means, stdevs = metric_error_bars(DS, trained_layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
   train_acc_SD, train_loss_SD, _, _, test_acc_SD, test_loss_SD = tuple(zip(*stdevs))
 
-  mean_DFs, stdev_DFs = DF_error_bars(DS, layer, scales, runs, WW_metrics, search_param=search_param)
+  mean_DFs, stdev_DFs = DF_error_bars(DS, trained_layer, scales, runs, WW_metrics, search_param=search_param)
 
   def populate_tr(ax, scale, X, xerr):
     ax.errorbar(
@@ -174,17 +174,17 @@ def plot_by_scales(DS, layer, scales, runs, WW_metrics,
   plt.tight_layout(rect=[0, 0, 0.6, 1.4]) 
   plt.subplots_adjust(wspace=0.80, hspace=0.95)
   
-  save_fig(save_dir, f"mlp3_quality_by_{search_param}_{layer}_{layer_name}.png", fig)
+  save_fig(save_dir, f"mlp3_quality_by_{search_param}_{trained_layer}_{layer_name}.png", fig)
 
 
 
-def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, plot_layers):
+def plot_over_epochs(DS, trained_layer, search_param, scale, runs, WW_metric, plot_layers):
   """ Plots a particular WW metric, such as "alpha", over the epochs of a series of training runs. Each trained layer is shown in a separate column
       DS, layer, search_param, scale: Fields that identify which experiment was done.
       WW_metric: A WeightWatcher metric to be plotted. 
       layers: A list of indices of layers for which WW_metric should be plotted. Valid indices are {0, 1}
   """
-  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
 
   fig, axes = plt.subplots(nrows=1, ncols=len(plot_layers), figsize = (6*len(plot_layers), 4))
 
@@ -205,10 +205,10 @@ def plot_over_epochs(DS, layer, search_param, scale, runs, WW_metric, plot_layer
 
 
 
-def populate_metrics_all_epochs(DS, layer, search_param, scale, runs, TRUNC_field=None):
-  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+def populate_metrics_all_epochs(DS, trained_layer, search_param, scale, runs, TRUNC_field=None):
+  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
 
-  Emin = min(last_epoch(run, f"SETOL/{DS}/{layer}/{search_param}_{2**scale}") for run in runs)
+  Emin = min(last_epoch(run, f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}") for run in runs)
   train_acc        = np.zeros((len(runs), Emin+1))
   train_loss       = np.zeros((len(runs), Emin+1))
   test_acc         = np.zeros((len(runs), Emin+1))
@@ -233,7 +233,7 @@ def populate_metrics_all_epochs(DS, layer, search_param, scale, runs, TRUNC_fiel
   return train_acc, train_loss, test_acc, test_loss
 
 
-def populate_metrics_last_E(DS, layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
+def populate_metrics_last_E(DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
   train_acc   = np.zeros((len(scales), len(runs)))
   train_loss  = np.zeros((len(scales), len(runs)))
   test_acc    = np.zeros((len(scales), len(runs)))
@@ -241,7 +241,7 @@ def populate_metrics_last_E(DS, layer, search_param, scales, runs, TRUNC_field=N
 
   save_file = None
   for scale_i, scale in enumerate(scales):
-    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
     for run_i, run in enumerate(runs):
       if TRUNC_field is not None:
         save_file = f"{TRUNC_field}_truncated_accuracy_run_{run}.npy"
@@ -263,8 +263,8 @@ def populate_metrics_last_E(DS, layer, search_param, scales, runs, TRUNC_field=N
 
 
 
-def populate_WW_metric_all_epochs(DS, layer, search_param, scale, runs, Emin, WW_metric):
-  model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+def populate_WW_metric_all_epochs(DS, trained_layer, search_param, scale, runs, Emin, WW_metric):
+  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
 
   WW_data = np.zeros((len(runs), Emin+1, 2))
 
@@ -277,11 +277,11 @@ def populate_WW_metric_all_epochs(DS, layer, search_param, scale, runs, Emin, WW
 
 
 
-def populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metric):
+def populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metric):
   WW_data = np.zeros((len(scales), len(runs), 2))
 
   for scale_i, scale in enumerate(scales):
-    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
     for run_i, run in enumerate(runs):
       E = last_epoch(run, model_name)
 
@@ -292,14 +292,13 @@ def populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metr
 
 
 
-def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
+def plot_truncated_accuracy_over_epochs(DS, trained_layer, search_param, scale, runs,
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
     ylims=None,     # Maximum values to set for each plot so they can be compared
     E0=4, # Skip the first few epochs so that the variance is contained.
     save_dir=None,  # place to save the images
   ):
   fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 4))
-  set_styles()
 
   if ylims is None: ylims = (None, None)
 
@@ -307,14 +306,14 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
   FIELD_short = ['detX', 'xmin'][XMIN]
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_all_epochs(
-    DS, layer, search_param, scale, runs, TRUNC_field=None)
+    DS, trained_layer, search_param, scale, runs, TRUNC_field=None)
 
   trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_all_epochs(
-    DS, layer, search_param, scale, runs, TRUNC_field=FIELD_short)
+    DS, trained_layer, search_param, scale, runs, TRUNC_field=FIELD_short)
   
   Emin = train_acc.shape[1]-1
 
-  alpha = populate_WW_metric_all_epochs(DS, layer, search_param, scale, runs, Emin, "alpha")
+  alpha = populate_WW_metric_all_epochs(DS, trained_layer, search_param, scale, runs, Emin, "alpha")
 
   X = np.arange(E0, Emin+1)
   plot_one = lambda ax, Y, label, color=None: ax.errorbar(X, np.mean(Y[:,E0:], axis=0),
@@ -323,14 +322,15 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
   # Error = 1 - accuracy
   plot_one(axes[0], train_acc        - trunc_train_acc, "train error")
   plot_one(axes[0], test_acc         - trunc_test_acc , "test error")
+
   plot_one(axes[1], trunc_train_loss - train_loss     , "train loss")
   plot_one(axes[1], trunc_test_loss  - test_loss      , "test loss")
 
-  if layer in ("all", "FC1", "FC1_WHITENED"): plot_one(axes[2], alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
-  if layer in ("all", "FC2", "FC2_WHITENED"): plot_one(axes[2], alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
+  if trained_layer in ("all", "FC1", "FC1_WHITENED"): plot_one(axes[2], alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
+  if trained_layer in ("all", "FC2", "FC2_WHITENED"): plot_one(axes[2], alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
 
 
-  common_title = f"{search_param} = {2**scale} trained layer(s): {layer}"
+  common_title = f"{search_param} = {2**scale} trained layer(s): {trained_layer}"
   axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntruncated train error - train error")
   axes[1].set(xlabel="epochs", ylabel=r"$\Delta$ loss",  title=f"{common_title}\ntruncated train loss - train loss")
   axes[2].set(xlabel="epochs", ylabel=r"$\alpha$",       title=f"{common_title}\n" + r"$\alpha$ for trained layers")
@@ -344,10 +344,10 @@ def plot_truncated_accuracy_over_epochs(DS, layer, search_param, scale, runs,
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
-  save_fig(save_dir, f"mlp3_trunc_error_by_epochs_{search_param}_{scale}_{layer}_{FIELD_short}.png", fig)
+  save_fig(save_dir, f"mlp3_trunc_error_by_epochs_{search_param}_{scale}_{trained_layer}_{FIELD_short}.png", fig)
 
 
-def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
+def plot_truncated_errors_by_scales(DS, trained_layer, search_param, scales, run,
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
     save_dir = None,
   ):
@@ -357,14 +357,14 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
   fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 2))
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, [run], TRUNC_field=None)
+    DS, trained_layer, search_param, scales, [run], TRUNC_field=None)
   trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, [run], TRUNC_field=FIELD_short)
+    DS, trained_layer, search_param, scales, [run], TRUNC_field=FIELD_short)
 
 
   alpha = np.zeros((len(scales), 2))
   for scale in scales:
-    model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+    model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
     E = last_epoch(run, model_name)
     details = Trainer.load_details(run, model_name).query(f"epoch == {E}")
     alpha[scale,:] = details.loc[:, "alpha"]
@@ -379,11 +379,11 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
   plot_one(axes[1], trunc_train_loss - train_loss, f"train loss")
   plot_one(axes[1], trunc_test_loss  - test_loss,  f"test loss")
 
-  if layer in ("all", "FC1", "FC1_WHITENED"): axes[2].plot(X, alpha[:,0], label=r"FC1 $\alpha$", color="red")
-  if layer in ("all", "FC2", "FC2_WHITENED"): axes[2].plot(X, alpha[:,1], label=r"FC2 $\alpha$", color="green")
+  if trained_layer in ("all", "FC1", "FC1_WHITENED"): axes[2].plot(X, alpha[:,0], label=r"FC1 $\alpha$", color="red")
+  if trained_layer in ("all", "FC2", "FC2_WHITENED"): axes[2].plot(X, alpha[:,1], label=r"FC2 $\alpha$", color="green")
   
 
-  common_title = f"{search_param} search trained layer(s): {layer} at final epoch"
+  common_title = f"{search_param} search trained layer(s): {trained_layer} at final epoch"
   axes[0].set(xlabel = f"{search_param} factor", ylabel = r"$\Delta$ error", title=f"{common_title}\ntruncated error - train error")
   axes[1].set(xlabel = f"{search_param} factor", ylabel = r"$\Delta$ loss",  title=f"{common_title}\ntruncated loss - train loss")
   axes[2].set(xlabel = f"{search_param} factor", ylabel = r"$\alpha$",  title=f"{common_title}\n" + r"$\alpha$ by layer")
@@ -392,11 +392,11 @@ def plot_truncated_errors_by_scales(DS, layer, search_param, scales, run,
   
   for ax in axes: ax.legend()
 
-  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_run_{run}_{layer}_{FIELD_short}.png", fig)
+  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_run_{run}_{trained_layer}_{FIELD_short}.png", fig)
 
 
 
-def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
+def plot_truncated_errors_by_metric(DS, trained_layer, search_param, scales, runs,
     plot_layers,
     WW_metric,      # WW_metric to plot
     XMIN=True,      # Whether to use xmin, or detX as the tail demarcation
@@ -410,15 +410,15 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
   if L == 1: axes = [axes]
 
   train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, runs, TRUNC_field=None, FLAT=True)
+    DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=True)
   trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
-    DS, layer, search_param, scales, runs, TRUNC_field=FIELD_short, FLAT=True)
+    DS, trained_layer, search_param, scales, runs, TRUNC_field=FIELD_short, FLAT=True)
 
-  WW_data = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metric).reshape((-1, 2))
+  WW_data = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metric).reshape((-1, 2))
 
   WW_data = WW_data
   for l, ax in zip(plot_layers, axes):
-    common_title = f"{search_param} search trained layer(s): {layer} at last epoch"
+    common_title = f"{search_param} search trained layer(s): {trained_layer} at last epoch"
     layer_name = ["FC1", "FC2"][l]
 
     ax.plot(WW_data[:, l], train_acc - trunc_train_acc, '+', label="truncated train error - train error")
@@ -429,10 +429,10 @@ def plot_truncated_errors_by_metric(DS, layer, search_param, scales, runs,
     ax.legend()
     ax.axhline(0, color="gray", zorder=-1)
 
-  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{layer}_{FIELD_short}.png", fig)
+  save_fig(save_dir, f"mlp3_trunc_error_by_{search_param}_{WW_metric}_{trained_layer}_{FIELD_short}.png", fig)
 
 
-def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
+def plot_ww_metrics_by_scales(DS, trained_layer, search_param, scales, runs,
     plot_layers,
     WW_metrics,     # WW_metrics to plot
     save_dir = None,
@@ -440,8 +440,8 @@ def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
   assert len(WW_metrics) == 2, len(WW_metrics)
   assert len(plot_layers) <= 2, len(plot_layers)
 
-  metric_data1 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[0]) #.reshape((-1, 2))
-  metric_data2 = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, WW_metrics[1]) #.reshape((-1, 2))
+  metric_data1 = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metrics[0]) #.reshape((-1, 2))
+  metric_data2 = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metrics[1]) #.reshape((-1, 2))
 
   L = len(plot_layers)
   fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(7*L-1, 4))
@@ -452,24 +452,24 @@ def plot_ww_metrics_by_scales(DS, layer, search_param, scales, runs,
   common_title = f"MLP3: {WW_metrics[0]} vs {WW_metrics[1]}\nVarious {search_param_long}s considered"
   for l, ax in zip(plot_layers, axes):
     for scale_i, scale in enumerate(scales):
-      model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
+      model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
       X = metric_data1[scale_i, :, l]
       Y = metric_data2[scale_i, :, l]
       ax.errorbar(np.mean(X), np.mean(Y), xerr=np.std(X, axis=0), yerr=np.std(Y, axis=0), fmt='-', label=f"{search_param}={2**scale}")
     ax.set(xlabel=WW_metrics[0], ylabel=WW_metrics[1], title=f"{common_title}\nLayer {layer_names[l]}")
     ax.legend()
 
-  save_fig(save_dir, f"mlp3_{WW_metrics[0]}_by_{WW_metrics[1]}_{search_param}_{layer}.png", fig)
+  save_fig(save_dir, f"mlp3_{WW_metrics[0]}_by_{WW_metrics[1]}_{search_param}_{trained_layer}.png", fig)
 
 
-def plot_detX(DS, layer, search_param, scales, runs, plot_layers, save_dir = None,):
+def plot_detX(DS, trained_layer, search_param, scales, runs, plot_layers, save_dir = None,):
   red_colors, green_colors, blue_colors = make_colors(search_param, scales)
 
-  alpha = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "alpha")
+  alpha = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, "alpha")
   # xmin = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "xmin")
   # detX = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "detX_val")
 
-  Dl = populate_WW_metric_last_epoch(DS, layer, search_param, scales, runs, "detX_delta")
+  Dl = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, "detX_delta")
 
   L = len(plot_layers)
   fig, axes = plt.subplots(ncols=L, nrows=1, figsize=(9*L - 2, 4))
@@ -498,7 +498,7 @@ def plot_detX(DS, layer, search_param, scales, runs, plot_layers, save_dir = Non
       title=f"{common_title}\nlayer {layer_names[l]}")
     ax.legend(bbox_to_anchor=(1.35, 0.75))
 
-  save_fig(save_dir, f"mlp3_detX_delta_{search_param}_{layer}.png", fig)
+  save_fig(save_dir, f"mlp3_detX_delta_{search_param}_{trained_layer}.png", fig)
 
 
 
