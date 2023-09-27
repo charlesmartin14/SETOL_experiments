@@ -220,8 +220,8 @@ def populate_metrics_all_epochs(DS, layer, search_param, scale, runs, TRUNC_fiel
   save_file=None
   for run in runs:
     if TRUNC_field is not None:
-      # FIXME: Using old name smoothed rather than truncated until code finishes running.
-      save_file = f"{TRUNC_field}_smoothed_accuracy_run_{run}.npy"
+      save_file = f"{TRUNC_field}_truncated_accuracy_run_{run}.npy"
+
     metrics = Trainer.load_metrics(run, model_name, save_file=save_file)
     if metrics[0] is None:
       print(f"metrics for {model_name} {save_file} not found")
@@ -246,8 +246,7 @@ def populate_metrics_last_E(DS, layer, search_param, scales, runs, TRUNC_field=N
     model_name = f"SETOL/{DS}/{layer}/{search_param}_{2**scale}"
     for run_i, run in enumerate(runs):
       if TRUNC_field is not None:
-        # FIXME: Using old name smoothed rather than truncated until code finishes running.
-        save_file = f"{TRUNC_field}_smoothed_accuracy_run_{run}.npy"
+        save_file = f"{TRUNC_field}_truncated_accuracy_run_{run}.npy"
 
       E = last_epoch(run, model_name)
       ind = (scale_i, run_i)
