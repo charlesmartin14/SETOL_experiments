@@ -44,6 +44,7 @@ def make_colors(search_param, scales):
 
 def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metric,
   LOSS = True,
+  xlim=None,
   ylim=None,
   save_dir=None
 ):
@@ -90,8 +91,12 @@ def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metri
 
     if ylim is None: ylim = (0, None)
     if ylim[0] is None: ylim = (0, ylim[1])
+
+    if xlim is None: xlim = (2, None)
+    if xlim[0] is None: xlim = (2, xlim[1])
+
     ax.set(title=f"{common_title}\n{y_ax_name} vs. {WW_metric} for layer {layer_name}",
-          ylabel=y_ax_name, xlabel=WW_metric, ylim=ylim)
+          ylabel=y_ax_name, xlabel=WW_metric, xlim=xlim, ylim=ylim)
     
   LOSS = 'loss' if LOSS else 'error'
   save_fig(save_dir, f"mlp3_{LOSS}_by_{search_param}={2**scale}_{trained_layer}_{layer_name}.png", fig)
