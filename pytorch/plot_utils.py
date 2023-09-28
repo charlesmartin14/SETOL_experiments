@@ -9,7 +9,8 @@ from weightwatcher import WeightWatcher
 from trainer import Trainer
 from utils import last_epoch
 
-from utils import metric_error_bars, DF_error_bars
+from utils import metric_error_bars, DF_error_bars, populate_metrics_all_epochs, populate_metrics_last_E
+from utils import populate_WW_metric_all_epochs, populate_WW_metric_last_E
 
 
 # Set standard constants
@@ -202,93 +203,6 @@ def plot_over_epochs(DS, trained_layer, search_param, scale, runs, WW_metric, pl
   for l, ax in zip(plot_layers, axes):
     ax.set(title=f"{model_name}\nlayer FC{l+1}", xlabel="epoch", ylabel=WW_metric)
     ax.legend()
-
-
-
-def populate_metrics_all_epochs(DS, trained_layer, search_param, scale, runs, TRUNC_field=None):
-  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
-
-  Emin = min(last_epoch(run, f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}") for run in runs)
-  train_acc        = np.zeros((len(runs), Emin+1))
-  train_loss       = np.zeros((len(runs), Emin+1))
-  test_acc         = np.zeros((len(runs), Emin+1))
-  test_loss        = np.zeros((len(runs), Emin+1))
-
-
-  save_file=None
-  for run in runs:
-    if TRUNC_field is not None:
-      save_file = f"{TRUNC_field}_truncated_accuracy_run_{run}.npy"
-
-    metrics = Trainer.load_metrics(run, model_name, save_file=save_file)
-    if metrics[0] is None:
-      print(f"metrics for {model_name} {save_file} not found")
-      continue
-
-    train_acc[run,:Emin+1], train_loss[run,:Emin+1], _, _, test_acc[run,:Emin+1], test_loss[run,:Emin+1] = [
-      m[:Emin+1]
-      for m in metrics
-    ]
-
-  return train_acc, train_loss, test_acc, test_loss
-
-
-def populate_metrics_last_E(DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
-  train_acc   = np.zeros((len(scales), len(runs)))
-  train_loss  = np.zeros((len(scales), len(runs)))
-  test_acc    = np.zeros((len(scales), len(runs)))
-  test_loss   = np.zeros((len(scales), len(runs)))
-
-  save_file = None
-  for scale_i, scale in enumerate(scales):
-    model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
-    for run_i, run in enumerate(runs):
-      if TRUNC_field is not None:
-        save_file = f"{TRUNC_field}_truncated_accuracy_run_{run}.npy"
-
-      E = last_epoch(run, model_name)
-      ind = (scale_i, run_i)
-
-      metrics = Trainer.load_metrics(run, model_name, save_file=save_file)
-      if metrics[0] is None: continue
-      train_acc[ind], train_loss[ind], _, _, test_acc[ind], test_loss[ind] = [m[E] for m in metrics]
-
-  if FLAT:
-    train_acc  = train_acc.reshape((-1))
-    train_loss = train_loss.reshape((-1))
-    test_acc   = test_acc.reshape((-1))
-    test_loss  = test_loss.reshape((-1))
-
-  return train_acc, train_loss, test_acc, test_loss
-
-
-
-def populate_WW_metric_all_epochs(DS, trained_layer, search_param, scale, runs, Emin, WW_metric):
-  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
-
-  WW_data = np.zeros((len(runs), Emin+1, 2))
-
-  for run_i, run in enumerate(runs):
-    details = Trainer.load_details(run, model_name)
-    for epoch in range(1, Emin+1):
-      WW_data[run_i, epoch, :] = details.query(f"epoch == {epoch}").loc[:, WW_metric]
-  
-  return WW_data
-
-
-
-def populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metric):
-  WW_data = np.zeros((len(scales), len(runs), 2))
-
-  for scale_i, scale in enumerate(scales):
-    model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
-    for run_i, run in enumerate(runs):
-      E = last_epoch(run, model_name)
-
-      WW_data[scale_i, run_i, :] = Trainer.load_details(
-        run, model_name).query(f"epoch == {E}").loc[:, WW_metric]
-  
-  return WW_data
 
 
 
