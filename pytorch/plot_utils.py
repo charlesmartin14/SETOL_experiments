@@ -10,7 +10,7 @@ from trainer import Trainer
 from utils import last_epoch
 
 from utils import metric_error_bars, DF_error_bars, populate_metrics_all_epochs, populate_metrics_last_E
-from utils import populate_WW_metric_all_epochs, populate_WW_metric_last_E
+from utils import populate_WW_metric_all_epochs, populate_WW_metric_last_epoch
 
 
 # Set standard constants
