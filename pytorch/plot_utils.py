@@ -245,7 +245,7 @@ def plot_truncated_accuracy_over_epochs(DS, trained_layer, search_param, scale, 
 
 
   common_title = f"{search_param} = {2**scale} trained layer(s): {trained_layer}"
-  axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntruncated train error - train error")
+  axes[0].set(xlabel="epochs", ylabel=r"$\Delta$ error", title=f"{common_title}\ntruncated error difference")
   axes[1].set(xlabel="epochs", ylabel=r"$\Delta$ loss",  title=f"{common_title}\ntruncated train loss - train loss")
   axes[2].set(xlabel="epochs", ylabel=r"$\alpha$",       title=f"{common_title}\n" + r"$\alpha$ for trained layers")
 
