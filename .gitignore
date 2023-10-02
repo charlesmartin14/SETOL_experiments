@@ -2,9 +2,8 @@
 saved_models
 datasets
 ww-img*
-
-# PyCharm
-.idea
+notebooks/*.png
+figs
 
 
 # Byte-compiled / optimized / DLL files
