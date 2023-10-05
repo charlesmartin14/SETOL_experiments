@@ -4,12 +4,14 @@ import numpy as np
 import pandas as pd
 
 from matplotlib import pyplot as plt
+from sklearn import linear_model
 from weightwatcher import WeightWatcher
 
 from trainer import Trainer
 from utils import last_epoch
 
-from utils import metric_error_bars, DF_error_bars, populate_metrics_all_epochs, populate_metrics_last_E
+from utils import metric_error_bars, DF_error_bars
+from utils import populate_metrics_all_epochs, populate_metrics_last_epoch
 from utils import populate_WW_metric_all_epochs, populate_WW_metric_last_epoch
 
 
@@ -278,9 +280,9 @@ def plot_truncated_errors_by_scales(DS, trained_layer, search_param, scales, run
 
   fig, axes = plt.subplots(ncols = 3, nrows = 1, figsize=(20, 2))
 
-  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
+  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_epoch(
     DS, trained_layer, search_param, scales, [run], TRUNC_field=None)
-  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
+  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_epoch(
     DS, trained_layer, search_param, scales, [run], TRUNC_field=FIELD_short)
 
 
@@ -331,9 +333,9 @@ def plot_truncated_errors_by_metric(DS, trained_layer, search_param, scales, run
   fig, axes = plt.subplots(ncols = L, nrows = 1, figsize=(6*L + 1*(L-1), 4))
   if L == 1: axes = [axes]
 
-  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_E(
+  train_acc, train_loss, test_acc, test_loss = populate_metrics_last_epoch(
     DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=True)
-  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_E(
+  trunc_train_acc, trunc_train_loss, trunc_test_acc, trunc_test_loss = populate_metrics_last_epoch(
     DS, trained_layer, search_param, scales, runs, TRUNC_field=FIELD_short, FLAT=True)
 
   WW_data = populate_WW_metric_last_epoch(DS, trained_layer, search_param, scales, runs, WW_metric).reshape((-1, 2))

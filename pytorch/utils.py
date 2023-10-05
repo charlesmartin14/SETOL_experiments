@@ -30,9 +30,9 @@ def metric_error_bars(DS, layer, scales, runs, search_param="BS"):
   return means, stdevs
 
 
-def average_DFS(model_name, runs, WW_metrics):
+def average_DFS_last_epoch(model_name, runs, WW_metrics):
   df_concat = pd.concat([
-    Trainer.load_details(run, model_name).query(f"epoch == {last_epoch(run, model_name)}").loc[:,WW_metrics]
+    Trainer.load_details(run, model_name).query(f"epoch == {last_epoch(run, model_name)}").loc[:, WW_metrics]
     for run in runs
   ])
   means = df_concat.groupby(df_concat.index).mean()
@@ -40,10 +40,9 @@ def average_DFS(model_name, runs, WW_metrics):
 
   return means, stdevs
 
-
 def DF_error_bars(DS, layer, scales, runs, WW_metrics, search_param="BS"):
   mean_DFs, stdev_DFs = zip(*[
-    average_DFS(f"SETOL/{DS}/{layer}/{search_param}_{2**scale}", runs, WW_metrics)
+    average_DFS_last_epoch(f"SETOL/{DS}/{layer}/{search_param}_{2**scale}", runs, WW_metrics)
     for scale in scales
   ])
 
@@ -113,7 +112,7 @@ def populate_metrics_all_epochs(DS, trained_layer, search_param, scale, runs, TR
   return train_acc, train_loss, test_acc, test_loss
 
 
-def populate_metrics_last_E(DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
+def populate_metrics_last_epoch(DS, trained_layer, search_param, scales, runs, TRUNC_field=None, FLAT=False):
   train_acc   = np.zeros((len(scales), len(runs)))
   train_loss  = np.zeros((len(scales), len(runs)))
   test_acc    = np.zeros((len(scales), len(runs)))
