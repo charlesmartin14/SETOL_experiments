@@ -105,6 +105,100 @@ def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metri
   save_fig(save_dir, f"mlp3_{LOSS}_by_{search_param}={2**scale}_{trained_layer}_{layer_name}.png", fig)
 
 
+def plot_loss_binned(DS, trained_layer, search_param, scales, runs, plot_layer, WW_metric,
+  LOSS = True,
+  precision = 0.05,
+  xlim=None,
+  ylim=None,
+  save_dir=None,
+  E0=4
+):
+  model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scales[0]}"
+
+  runs = [
+    run for run in runs
+    if Trainer.save_dir(run, 0, model_name).exists()
+  ]
+  if not runs: return
+  
+  if ylim is None: ylim = (0, None)
+  if xlim is None: xlim = (None, None)
+  
+  layer_name = ["FC1", "FC2"][plot_layer]
+  trained_layers = {"all": "all layers trained", "FC1": "only FC1 trained", "FC2": "only FC2 trained"}
+
+  fig, axes = plt.subplots(ncols=2, nrows=1, figsize=(14, 3))
+  red_colors, green_colors, blue_colors = make_colors(search_param, scales)
+
+  common_title = f"MLP3: various {search_param}s; {trained_layers[trained_layer]}"
+  plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
+                    wspace=0.4,
+                    hspace=0.5)
+
+  ERR_TYPE = 'loss' if LOSS else 'error'
+  WW_metrics = ["train_acc", "train_loss", "test_acc", "test_loss", WW_metric, "epoch", "run_number"]
+
+  # When plotting alpha, also plot a dashed linear fit for points above alpha=2
+  def plot_lm_fit(df, y_col_name, scale):
+    lm = linear_model.LinearRegression()
+    X = np.sort(pd.unique(df.alpha)).reshape((-1,1))
+    df = df.query(f"alpha >= 2").loc[:, ("alpha", y_col_name)].values
+    lm.fit(df[:, 0].reshape((-1,1)), df[:, 1].reshape((-1,1)))
+    label = r"linear fit $\alpha>2$" if scale == scales[0] else None
+    ax.plot(X, lm.predict(X), '-.', color="black", zorder=10, label=label)
+
+
+  for ax, TRAIN in zip(axes, [True, False]):
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+
+    MODE = 'TRAIN' if TRAIN else 'TEST'
+    y_ax_name = f"{MODE} {ERR_TYPE}"
+    y_col_name = f"{MODE.lower()}_{'loss' if LOSS else 'acc'}"
+
+    colors = blue_colors if TRAIN else green_colors
+    all_df = None
+
+    for scale, color in zip(scales, colors):
+      model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
+      df = pd.concat([
+        Trainer.load_details(run, model_name).loc[plot_layer, WW_metrics]
+        for run in runs
+      ])
+      df = df.query(f"{E0} < epoch")
+      if xlim[0] is not None: df = df.query(f"{xlim[0]} <= {WW_metric}")
+      if xlim[1] is not None: df = df.query(f"{xlim[1]} >= {WW_metric}")
+
+      if not LOSS: df.loc[:, y_col_name] = 1 - df.loc[:, y_col_name]
+
+      if all_df is None:  all_df = df.copy()
+      else:               all_df = pd.concat([all_df, df]) 
+
+      # Round to specified precision for binning.
+      df.loc[:, WW_metric] = df.loc[:, WW_metric] / precision
+      df = df.round(pd.Series([0], index=[WW_metric]))
+      df.loc[:, WW_metric] = df.loc[:, WW_metric] * precision
+
+      # Plot error bars
+      X = np.sort(pd.unique(df.loc[:, WW_metric]))
+      Y    = df.groupby(WW_metric).mean().loc[:,y_col_name]
+      yerr = df.groupby(WW_metric).std ().loc[:,y_col_name]
+      ax.errorbar(X, Y, xerr = 0, yerr=yerr, label=f"{search_param}={2**scale}", color=color)
+
+      if WW_metric == "alpha" and trained_layer == "all":
+        plot_lm_fit(df, y_col_name, scale)
+
+    if WW_metric == "alpha" and trained_layer != "all":
+      plot_lm_fit(all_df, y_col_name, scales[0])
+
+    title = f"{common_title}\n{MODE} {ERR_TYPE} vs. {WW_metric} for layer {layer_name}"
+    ax.set(ylabel=y_ax_name, xlabel=WW_metric, title=title) #, xlim=xlim, ylim=ylim)
+    ax.legend(bbox_to_anchor=(1.6, 0.75))
+    if WW_metric == "alpha": ax.axvline(2, linewidth=0.5, zorder=-1, color="red")
+
+  save_fig(save_dir, f"mlp3_{ERR_TYPE}_by_{search_param}_{trained_layer}_{layer_name}_binned.png", fig)
+
+
 def plot_by_scales(DS, trained_layer, scales, runs, WW_metrics,
   plot_layer = 0,
   search_param="BS",
