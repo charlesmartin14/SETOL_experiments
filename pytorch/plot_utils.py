@@ -44,11 +44,13 @@ def make_colors(search_param, scales):
   if search_param == "LR": blue_colors[-1] = green_colors[-1] = red_colors[0]
   return red_colors, green_colors, blue_colors
 
+
 def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metric,
   LOSS = True,
   xlim=None,
   ylim=None,
-  save_dir=None
+  save_dir=None,
+  E0=4
 ):
   model_name = f"SETOL/{DS}/{trained_layer}/{search_param}_{2**scale}"
 
@@ -57,6 +59,12 @@ def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metri
     if Trainer.save_dir(run, 0, model_name).exists()
   ]
   if not runs: return
+
+  if ylim is None: ylim = (0, None)
+  if ylim[0] is None: ylim = (0, ylim[1])
+
+  if xlim is None: xlim = (2, None)
+  if xlim[0] is None: xlim = (2, xlim[1])
   
   layer_name = ["FC1", "FC2"][plot_layer]
   trained_layers = {"all": "all layers trained", "FC1": "only FC1 trained", "FC2": "only FC2 trained"}
@@ -66,36 +74,29 @@ def plot_loss(DS, trained_layer, search_param, scale, runs, plot_layer, WW_metri
 
   common_title = f"MLP3: {search_param}={2**scale}; {trained_layers[trained_layer]}"
 
-  SKIP = 2
   plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,
                     wspace=0.4,
                     hspace=0.5)
   for ax, TRAIN in zip(axes, [True, False]):
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
-
     y_ax_name = f"{'TRAIN' if TRAIN else 'TEST'} {'loss' if LOSS else 'error'}"
     for run in runs:
       train_acc, train_loss, _, _, test_acc, test_loss = Trainer.load_metrics(run, model_name)
-      X = np.arange(SKIP, last_epoch(run, model_name))
+      X = np.arange(E0, last_epoch(run, model_name))
 
       metric_vals = np.zeros(X.shape)
       details = Trainer.load_details(run, model_name)
       for e in X:
-        metric_vals[e-SKIP] = details.query(f"epoch == {e}").loc[plot_layer, WW_metric]
+        metric_vals[e-E0] = details.query(f"epoch == {e}").loc[plot_layer, WW_metric]
       if LOSS:
-        if TRAIN: ax.plot(metric_vals, train_loss[X], '+', label=f"seed={run+1}", alpha=0.5)
-        else:     ax.plot(metric_vals, test_loss [X], '+', label=f"seed={run+1}", alpha=0.5)
+        if TRAIN: ax.plot(metric_vals, train_loss[X], '-', label=f"seed={run+1}", alpha=0.5)
+        else:     ax.plot(metric_vals, test_loss [X], '-', label=f"seed={run+1}", alpha=0.5)
       else:
-        if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '+', label=f"seed={run+1}", alpha=0.5)
-        else:     ax.plot(metric_vals, 1-test_acc [X], '+', label=f"seed={run+1}", alpha=0.5)
-    ax.legend(bbox_to_anchor=(1.45, 0.75))
+        if TRAIN: ax.plot(metric_vals, 1-train_acc[X], '-', label=f"seed={run+1}", alpha=0.5)
+        else:     ax.plot(metric_vals, 1-test_acc [X], '-', label=f"seed={run+1}", alpha=0.5)
 
-    if ylim is None: ylim = (0, None)
-    if ylim[0] is None: ylim = (0, ylim[1])
-
-    if xlim is None: xlim = (2, None)
-    if xlim[0] is None: xlim = (2, xlim[1])
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.75, box.height])
+    ax.legend() #bbox_to_anchor=(1.45, 0.75))
 
     ax.set(title=f"{common_title}\n{y_ax_name} vs. {WW_metric} for layer {layer_name}",
           ylabel=y_ax_name, xlabel=WW_metric, xlim=xlim, ylim=ylim)
