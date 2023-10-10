@@ -31,7 +31,7 @@ def SVD_truncate(c, lambda_min):
 
 
 def truncated_accuracy(model_name, t, loader, LR, runs, device="cuda", XMIN=True):
-  FIELD = 'xmin' if XMIN else "detX_val_unrescaled"
+  FIELD = 'xmin' if XMIN else "detX_val"
   FIELD_short = ['detX', 'xmin'][XMIN]
 
   for run in runs:
