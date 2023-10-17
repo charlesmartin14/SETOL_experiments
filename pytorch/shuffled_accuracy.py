@@ -36,7 +36,14 @@ def truncated_accuracy(model_name, t, loader, LR, runs, device="cuda", XMIN=True
 
   for run in runs:
     save_file = f"./saved_models/{model_name}/{FIELD_short}_truncated_accuracy_run_{run}.npy"
-    if Path(save_file).exists(): return
+    if Path(save_file).exists():
+      print(f"Found path {save_file}")
+      continue
+
+    # Create a placeholder so that another process will not compete with this one.
+    print(f"created a stub of {save_file}")
+    with open(save_file, "wb") as fp:
+      np.save(fp, np.zeros(1))
 
     print(f"truncated {FIELD_short} accuracy {model_name} run {run}")
     E = last_epoch(run, model_name)
