@@ -1,0 +1,10 @@
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00001-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00002-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00003-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00004-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00005-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00006-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00007-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00008-of-00009.bin
+wget https://huggingface.co/tiiuae/falcon-40b/resolve/main/pytorch_model-00009-of-00009.bin
+
