@@ -5,6 +5,9 @@ ww-img*
 notebooks/*.png
 figs
 
+*safetensors
+*.bin
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
