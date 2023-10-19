@@ -206,7 +206,8 @@ def plot_by_scales(DS, trained_layer, scales, runs, WW_metrics,
 ):
   red_colors, green_colors, blue_colors = make_colors(search_param, scales)
 
-  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+1, figsize=(8*(1+len(WW_metrics)) + 2, 4))
+  fig, axes = plt.subplots(nrows=1, ncols=len(WW_metrics)+2, figsize=(8*(2+len(WW_metrics)) + 3, 4))
+  axes[-1].axis('off')
 
   means, stdevs = metric_error_bars(DS, trained_layer, scales, runs, search_param=search_param)
   train_acc, train_loss, _, _, test_acc, test_loss = tuple(zip(*means))
@@ -274,8 +275,8 @@ def plot_by_scales(DS, trained_layer, scales, runs, WW_metrics,
 
     plot_legends(ax, tr_labels, te_labels)
 
-  plt.tight_layout(rect=[0, 0, 0.6, 1.4]) 
-  plt.subplots_adjust(wspace=0.80, hspace=0.95)
+  plt.tight_layout(rect=[0, 0, 0.70, 1.4]) 
+  plt.subplots_adjust(wspace=0.95, hspace=0.95)
   
   save_fig(save_dir, f"mlp3_quality_by_{search_param}_{trained_layer}_{layer_name}.png", fig)
 
