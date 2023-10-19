@@ -334,17 +334,15 @@ def plot_truncated_accuracy_over_epochs(DS, trained_layer, search_param, scale, 
 
   X = np.arange(E0, Emin+1)
   plot_one = lambda ax, Y, label, color=None: ax.errorbar(X, np.mean(Y[:,E0:], axis=0),
-    yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=r'$\Delta$ ' + label, color=color)
+    yerr=np.std(Y[:,E0:], axis=0), fmt='-', label=label, color=color)
 
   # Error = 1 - accuracy
-  plot_one(axes[0], train_acc        - trunc_train_acc, "train error")
-  plot_one(axes[0], test_acc         - trunc_test_acc , "test error")
-  test_err = 1 - test_acc[:, E0:Emin+1]
-  axes[0].errorbar(X, np.mean(test_err, axis=0), yerr=np.std(test_err, axis=0),
-    fmt='-', label="plain test error")
+  plot_one(axes[0], train_acc        - trunc_train_acc, r'$\Delta$ ' + "train error")
+  plot_one(axes[0], test_acc         - trunc_test_acc , r'$\Delta$ ' + "test error")
+  plot_one(axes[0], 1                      - test_acc , "plain test error")
 
-  plot_one(axes[1], trunc_train_loss - train_loss     , "train loss")
-  plot_one(axes[1], trunc_test_loss  - test_loss      , "test loss")
+  plot_one(axes[1], trunc_train_loss - train_loss     , r'$\Delta$ ' + "train loss")
+  plot_one(axes[1], trunc_test_loss  - test_loss      , r'$\Delta$ ' + "test loss")
 
   if trained_layer in ("all", "FC1", "FC1_WHITENED"): plot_one(axes[2], alpha[:,:,0], label=r"FC1 $\alpha$", color="red")
   if trained_layer in ("all", "FC2", "FC2_WHITENED"): plot_one(axes[2], alpha[:,:,1], label=r"FC2 $\alpha$", color="green")
