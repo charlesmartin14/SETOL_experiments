@@ -1,23 +1,24 @@
 import torch
-from torch.utils.data import Subset
 from torchvision.datasets import CIFAR10, MNIST, FashionMNIST
 from torchvision.transforms import PILToTensor
 
-class PILDataSet(Subset):
-  def __init__(self, train, DS = None):
-    assert isinstance(train, bool), type(train)
+from torch.utils.data import Dataset
 
-    if DS is None or "CIFAR10".startswith(DS): DS = CIFAR10("datasets", train=train, download=True)
-    if DS == "FASHION": DS = FashionMNIST("datasets", train=train, download=True) 
-    if DS == "MNIST": DS = MNIST("datasets", train=train, download=True)
-    self.DS = DS
-    self.p2t = PILToTensor()
+class PILDataSet(Dataset):
+    def __init__(self, train=True, DS="MNIST"):
+        # Initialize and load your data here.
+        self.train = train
+        # For example, load images and labels into a list or tensor:
+        self.data = ...  # Your data loading logic
+        self.labels = ...  # Your labels
 
-  def __len__(self):
-    return len(self.DS)
+    def __getitem__(self, index):
+        # Retrieve one sample and its corresponding label
+        image = self.data[index]
+        label = self.labels[index]
+        # You might need to do additional processing here.
+        return image, label
 
-  def __getitem__(self, item):
-    d, l = self.DS[item]
-    d = self.p2t(d)
-    return (d.to(torch.float32)/255, l)
+    def __len__(self):
+        return len(self.data)
 
