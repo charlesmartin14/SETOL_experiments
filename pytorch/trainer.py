@@ -66,8 +66,11 @@ class Trainer(object):
     details['test_acc'  ] = self.test_acc[epoch]
     details['test_loss' ] = self.test_loss[epoch]
 
-    if self.details is None:  self.details = details
-    else:                     self.details = self.details.append(details)
+    # Replace deprecated .append() with pd.concat.
+    if self.details is None:
+        self.details = details
+    else:
+        self.details = pd.concat([self.details, details], ignore_index=True)
 
 
   def save(self, run, e, model_name):
